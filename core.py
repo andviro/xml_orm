@@ -93,6 +93,16 @@ class SimpleField(_SortedEntry):
             assert len(val) <= self.maxOccurs, u'too many values of field {0}'.format(self.name)
 
 
+class BooleanField(SimpleField):
+    """Docstring for BooleanField """
+
+    def to_string(self, val):
+        return unicode(val).lower()
+
+    def to_python(self, root):
+        return root.text == 'true'
+
+
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
@@ -155,9 +165,12 @@ class _MetaSchema(type):
         new_sup = super(_MetaSchema, cls).__new__
         new_cls = new_sup(cls, name, bases, {})
 
-        base_meta = attrs.pop('Meta', None)
-        new_meta = getattr(new_cls, 'Meta', None)
-        new_cls._meta = new_meta or base_meta
+        new_meta = attrs.pop('Meta', None)
+        base_meta = parents[0]._meta if len(parents) else None
+        meta_attrs = dict(base_meta.__dict__) if base_meta else {}
+        if new_meta:
+            meta_attrs.update(new_meta.__dict__)
+        new_cls._meta = type('Meta', (object,), meta_attrs)
 
         new_cls._fields = []
         new_cls._fields_ref = {}
@@ -302,6 +315,41 @@ class Schema(object):
         return etree.tostring(self.xml(),
                               encoding=getattr(self._meta, 'encoding', 'utf-8'),
                               pretty_print=getattr(self._meta, 'pretty_print', False))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.save()
+
+    def data(self):
+        return str(self)
+
+    @property
+    def _fn(self):
+        """@todo: Docstring for _fn
+        :returns: @todo
+
+        """
+        tpl = getattr(self._meta, 'filename', None)
+        if tpl is None:
+            return None
+        return tpl.format(self=self)
+
+    def save(self):
+        """@todo: Docstring for save
+        :returns: @todo
+
+        """
+        fn = self._fn
+        if fn is None:
+            return
+        with open(fn, 'wb') as fp:
+            fp.write(str(self))
+
+    @classmethod
+    def create(cls, *args, **kwargs):
+        return cls(*args, **kwargs)
 
 
 if __name__ == '__main__':

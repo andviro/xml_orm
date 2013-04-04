@@ -1,5 +1,5 @@
 test
-new.zip
+*.zip
 *~
 *.sw?
 *.py[cod]
