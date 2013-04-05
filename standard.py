@@ -132,6 +132,8 @@ class ContainerFNS(core.Zipped, TransInfo):
         self._zip.writestr(name, content)
 
     class Meta:
+        # имя файла с дескриптором в архиве. При наследовании может быть
+        # изменено.
         entry = 'packageDescription.xml'
 
         # кодировка в которой сохранится XML
