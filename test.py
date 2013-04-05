@@ -42,6 +42,8 @@ class Book(core.Schema):
 class Article(Book):
     uid = core.SimpleField(u'ИД', insert_after='auth')
     auth = core.SimpleField(u'Author')
+    izdat = core.SimpleField(u'Издательство', insert_before='auth',
+                             minOccurs=0)
 
     class Meta:
         root = u'Статья'
@@ -54,9 +56,11 @@ class Article(Book):
 
 a = Article(uid=1, auth=u'Иван')
 a.abzats = u'Абзац'
+a.izdat = u'Мурзилка'
 a.docs.append(Document(uid=1, name='xxx'))
 a.docs.append(Document(uid=2, name='yyy'))
 a.signer = Signature(surname=u'Большой начальник', uid=2)
 xml_string = str(a)
+print unicode(a)
 b = Article.load(xml_string)
 assert unicode(a) == unicode(b)

@@ -269,7 +269,8 @@ class Schema(object):
                     if val is None:
                         assert field.minOccurs == 0, u'load: required field {0} not found'.format(
                             field.name)
-                    n += 1
+                    else:
+                        n += 1
                     setattr(new_elt, field.name, val)
                 else:
                     res = []
