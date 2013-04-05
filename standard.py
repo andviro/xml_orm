@@ -24,15 +24,17 @@ class Zipped(object):
         :returns: @todo
 
         """
-        self.__backing_storage = ZipFile(StringIO(), 'w')
+        self.__storage = StringIO()
+        self.__zip = ZipFile(self.__storage, 'w')
         super(Zipped, self).__init__(*args, **nargs)
 
     def save(self):
         entry, fn = self._fn, self._package
         if entry is None or fn is None:
             return
-        with ZipFile(fn, 'w') as zf:
+        with self.__zip as zf:
             zf.writestr(entry, str(self))
+        open(fn, 'wb').write(self.__storage.getvalue())
 
 
 class Sender(core.Schema):

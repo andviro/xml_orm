@@ -223,13 +223,15 @@ class Schema(object):
         for name, field in self._fields_ref.items():
             value = None
             if name in kwargs:
-                value = field.validate(kwargs[name])
+                value = field.validate(kwargs.pop(name))
             elif field.has_default:
                 value = field.validate(field.default)
             elif field.maxOccurs != 1:
                 value = []
             if value is not None:
                 setattr(self, name, value)
+        for name, value in kwargs.items():
+            setattr(self, name, value)
 
     @classmethod
     def load(cls, root):
