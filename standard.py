@@ -8,18 +8,18 @@ from uuid import uuid4
 class Zipped(object):
 
     @property
-    def _archive(self):
+    def _package(self):
         """@todo: Docstring for archive
         :returns: @todo
 
         """
-        tpl = getattr(self._meta, 'archive', None)
+        tpl = getattr(self._meta, 'package', None)
         if tpl is None:
             return None
         return tpl.format(self=self)
 
     def save(self):
-        entry, fn = self._fn, self._archive
+        entry, fn = self._fn, self._package
         if entry is None or fn is None:
             return
         with ZipFile(fn, 'w') as zf:
@@ -28,7 +28,21 @@ class Zipped(object):
 
 class Sender(core.Schema):
     uid = core.SimpleField(u'@идентификаторСубъекта')
-    type = core.SimpleField(u'@типСубъекта', default=u'абонент')
+    type = core.SimpleField(u'@типСубъекта', getter='get_type',
+                            setter='set_type')
+
+    def get_type(self):
+        if not hasattr(self, '__type'):
+            if len(self.uid) == 3:
+                self.__type = u'спецоператор'
+            elif len(self.uid) == 4:
+                self.__type = u'налоговыйОрган'
+            else:
+                self.__type = u'абонент'
+        return self.__type
+
+    def set_type(self, value):
+        self.__type = value
 
     class Meta:
         root = u'отправитель'
@@ -36,7 +50,6 @@ class Sender(core.Schema):
 
 class SOS(Sender):
     """Docstring for SOS """
-    type = core.SimpleField(u'@типСубъекта', default=u'спецоператор')
 
     class Meta:
         root = u'спецоператор'
@@ -123,13 +136,13 @@ class ContainerFNS(Zipped, TransInfo):
     """Docstring for ContainerFNS """
 
     class Meta:
-        archive = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self._uid}'
+        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self._uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
 
 if __name__ == '__main__':
     with ContainerFNS.create() as ti:
-        ti.sender = Sender(uid=uuid4().hex, type=u'спецоператор')
+        ti.sender = Sender(uid=uuid4().hex)
         ti.receiver = Receiver(uid=uuid4().hex)
         ti.sos = SOS(uid=u'2AE')
         for n in range(3):

@@ -18,6 +18,8 @@ class SimpleField(_SortedEntry):
 
     '''
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
+                 getter=None,
+                 setter=None,
                  insert_before=None,
                  insert_after=None, **kwargs):
         """@todo: Docstring for __init__
@@ -29,6 +31,8 @@ class SimpleField(_SortedEntry):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
+        self.getter = getter
+        self.setter = setter
         self.minOccurs = minOccurs
         assert maxOccurs, u"maxOccurs can't be 0"
         self.maxOccurs = maxOccurs
@@ -198,6 +202,11 @@ class _MetaSchema(type):
                 setattr(new_cls, name, attr)
         for (name, attr) in new_attrs:
             attr.add_to_cls(new_cls, name)
+            if attr.getter is not None or attr.setter is not None:
+                getter = getattr(new_cls, attr.getter, None) if attr.getter else None
+                setter = getattr(new_cls, attr.setter, None) if attr.setter else None
+                setattr(new_cls, attr.name, property(getter, setter))
+
         return new_cls
 
 
@@ -219,7 +228,8 @@ class Schema(object):
                 value = field.validate(field.default)
             elif field.maxOccurs != 1:
                 value = []
-            setattr(self, name, value)
+            if value is not None:
+                setattr(self, name, value)
 
     @classmethod
     def load(cls, root):
