@@ -19,7 +19,6 @@ class Zipped(object):
         return tpl.format(self=self)
 
     def save(self):
-        print 'save_zipped'
         entry, fn = self._fn, self._archive
         if entry is None or fn is None:
             return
@@ -37,6 +36,7 @@ class Sender(core.Schema):
 
 class SOS(Sender):
     """Docstring for SOS """
+    type = core.SimpleField(u'@типСубъекта', default=u'спецоператор')
 
     class Meta:
         root = u'спецоператор'
@@ -123,13 +123,14 @@ class ContainerFNS(Zipped, TransInfo):
     """Docstring for ContainerFNS """
 
     class Meta:
-        archive = 'EDI_{self.sender.uid}_{self.receiver.uid}_{self._uid}_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip'
+        archive = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self._uid}'
+                   '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
 
 if __name__ == '__main__':
     with ContainerFNS.create() as ti:
-        ti.sender = Sender(uid=u'default_sender')
-        ti.receiver = Receiver(uid=u'defaut_receiver')
+        ti.sender = Sender(uid=uuid4().hex, type=u'спецоператор')
+        ti.receiver = Receiver(uid=uuid4().hex)
         ti.sos = SOS(uid=u'2AE')
         for n in range(3):
             doc = Document()
