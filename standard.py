@@ -1,44 +1,18 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 import core
-from zipfile import ZipFile
-from cStringIO import StringIO
+import sys
 from uuid import uuid4
 
 
-class Zipped(object):
-
-    @property
-    def _package(self):
-        """@todo: Docstring for archive
-        :returns: @todo
-
-        """
-        tpl = getattr(self._meta, 'package', None)
-        if tpl is None:
-            return None
-        return tpl.format(self=self)
-
-    def __init__(self, *args, **nargs):
-        """@todo: Docstring for __init__
-        :returns: @todo
-
-        """
-        self.__storage = StringIO()
-        self.__zip = ZipFile(self.__storage, 'w')
-        super(Zipped, self).__init__(*args, **nargs)
-
-    def save(self):
-        entry, fn = self._fn, self._package
-        if entry is None or fn is None:
-            return
-        with self.__zip as zf:
-            zf.writestr(entry, str(self))
-        open(fn, 'wb').write(self.__storage.getvalue())
-
-
 class Sender(core.Schema):
+    u''' XML-дескриптор отправителя
+    '''
+    # Идентификатор абонента или спецоператора
     uid = core.SimpleField(u'@идентификаторСубъекта')
+
+    # Тип отправителя, значение по умолчанию устанавливается на основе
+    # идентификатора отправителя
     type = core.SimpleField(u'@типСубъекта', getter='get_type',
                             setter='set_type')
 
@@ -60,22 +34,23 @@ class Sender(core.Schema):
 
 
 class SOS(Sender):
-    """Docstring for SOS """
+    u"""Дескриптор спецоператора, отличается от отправителя только тегом. """
 
     class Meta:
         root = u'спецоператор'
 
 
 class Receiver(Sender):
-    """Docstring for Receiver """
+    u"""Дескриптор получателя, отличается от отправителя только тегом. """
 
     class Meta:
         root = u'получатель'
 
 
 class Content(core.Schema):
-    """Docstring for Content """
+    u"""Дескриптор содержимого документа."""
 
+    # Имя файла в архиве
     filename = core.SimpleField(u'@имяФайла')
 
     class Meta:
@@ -83,7 +58,7 @@ class Content(core.Schema):
 
 
 class Signature(Content):
-    """Docstring for Sign """
+    u"""Дескриптор подписи документа. Отличается от содержимого наличием поля 'role' """
 
     role = core.SimpleField(u'@роль', default=u'абонент')
 
@@ -92,11 +67,15 @@ class Signature(Content):
 
 
 class Document(core.Schema):
-    """Docstring for Document """
+    u"""Дескриптор документа.
 
+    """
+    # содержимое
     content = core.ComplexField(Content)
-    signature = core.ComplexField(Signature)
+    # подписи, представляются в виде списка элементов типа Signature
+    signature = core.ComplexField(Signature, maxOccurs='unbounded')
 
+    # атрибуты документа
     uid = core.SimpleField(u'@идентификаторДокумента')
     type_code = core.SimpleField(u'@кодТипаДокумента', default=u'01')
     type = core.SimpleField(u'@типДокумента', default=u'счетфактура')
@@ -109,6 +88,9 @@ class Document(core.Schema):
 
 
 class TransInfo(core.Schema):
+    u""" XML-дескриптор контейнера.
+
+    """
     version = core.SimpleField(u'@версияФормата', default=u"ФНС:1.0")
     doc_type = core.SimpleField(u'@типДокументооборота', default=u"СчетФактура")
     doc_code = core.SimpleField(u'@кодТипаДокументооборота', default=u"20")
@@ -119,34 +101,90 @@ class TransInfo(core.Schema):
     sender = core.ComplexField(Sender)
     sos = core.ComplexField(SOS)
     receiver = core.ComplexField(Receiver)
+    # документы представляются в виде списка
     document = core.ComplexField(Document, maxOccurs='unbounded')
 
     class Meta:
         root = u'ТрансИнф'
-        encoding = 'cp1251'
-        pretty_print = True
-        filename = 'packageDescription.xml'
 
 
-class ContainerFNS(Zipped, TransInfo):
+class ContainerFNS(core.Zipped, TransInfo):
     """Docstring for ContainerFNS """
 
+    def __init__(self, *args, **nargs):
+        u''' Инициализация полей, которые не загружаются/сохраняются из
+        контейнера. В частности поле uid используется только для вновь
+        созданных контейнеров при формировании имени архива.
+        '''
+        self.uid = uuid4().hex
+        super(ContainerFNS, self).__init__(*args, **nargs)
+
+    def add_file(self, name, content):
+        u''' Добавление файла в ZIP-контейнер.
+
+        :name: Имя файла в архиве
+        :content: Байтовая строка с содержимым
+
+        Добавленные таким образом файлы сохранятся в архиве после вызова метода save().
+        Рекомендуется применять, где возможно, оператор with.
+
+        '''
+        self._zip.writestr(name, content)
+
     class Meta:
-        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.uid}'
+        entry = 'packageDescription.xml'
+
+        # кодировка в которой сохранится XML
+        encoding = 'cp1251'
+
+        # управление форматированием сохраняемого XML
+        pretty_print = True
+
+        package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
 
 if __name__ == '__main__':
-    with ContainerFNS(doc_id=uuid4().hex, uid=uuid4().hex) as ti:
-        ti.sender = Sender(uid=uuid4().hex)
-        ti.receiver = Receiver(uid=uuid4().hex)
-        ti.sos = SOS(uid=u'2AE')
-        for n in range(3):
-            doc = Document()
-            doc.uid = uuid4().hex
-            doc.orig_filename = doc.uid + '.xml'
-            doc.content = Content(filename=(doc.uid + '.bin'))
-            doc.signature = Signature(filename=(uuid4().hex + '.bin'))
-            ti.document.append(doc)
+    # Создание контейнера "с нуля"
+    # в параметрах конструкторы можно передавать начальные значения полей
+    # для непереданных полей присваиваются значения по умолчанию
+    # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
+    # .save() или преобразовать контейнер в XML.
+    ti = ContainerFNS(doc_id=uuid4().hex)
+    ti.sender = Sender(uid=uuid4().hex)
+    ti.receiver = Receiver(uid=uuid4().hex)
+    ti.sos = SOS(uid=u'2AE')
+    for n in range(3):
+        doc = Document()
+        doc.uid = uuid4().hex
+        doc.orig_filename = doc.uid + '.xml'
+        doc.content = Content(filename=(doc.uid + '.bin'))
+        # Добавление дескриптора документа к дескриптору контейнера
+        ti.document.append(doc)
+        # Добавление собственно файла к содержимому контейнера
+        ti.add_file(doc.content.filename, 'test document content')
+        for k in range(2):
+            sig = Signature(filename=(uuid4().hex + '.bin'))
+            # Добавление дескриптора подписи к дескриптору документа
+            doc.signature.append(sig)
+            # Добавление файла подписи к содержимому контейнера
+            ti.add_file(sig.filename, 'test signature content')
 
-        print str(ti)
+    # сохранение сработает, только если контейнер сформирован корректно
+    try:
+        ti.save()
+    except:
+        print sys.exc_info()[:2]
+    else:
+        print ti.package
+        # загрузка контейнера из файла производится по имени, либо из байтовой
+        # строки содержимого, либо из открытого файлового объекта
+        with ContainerFNS.load(ti.package) as newti:
+            # добавления и изменения структуры отразятся на сохраненном
+            # содержимом архива
+            newti.add_file('lalalala', 'lalalala')
+            # если не изменить поле 'package', файл архива перезапишет исходный
+            # загруженный файл. Для вновь созданных контейнеров это поле
+            # пустое, и имя пакета формируется автоматически.
+            newti.package = 'some_other.zip'
+            # выход из контекста сохраняет архив

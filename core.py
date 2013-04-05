@@ -3,6 +3,8 @@
 
 from lxml import etree
 from copy import deepcopy
+from zipfile import ZipFile, BadZipfile
+from cStringIO import StringIO
 
 
 class _SortedEntry(object):
@@ -271,7 +273,7 @@ class Schema(object):
                     setattr(new_elt, field.name, val)
                 else:
                     res = []
-                    while True:
+                    while n < len(root):
                         val = field.load_one(root[n])
                         if val is None:
                             break
@@ -337,27 +339,49 @@ class Schema(object):
     def data(self):
         return str(self)
 
-    @property
-    def _fn(self):
-        """@todo: Docstring for _fn
+    def save(self):
+        pass
+
+
+class Zipped(object):
+
+    def __init__(self, *args, **nargs):
+        """@todo: Docstring for __init__
         :returns: @todo
 
         """
-        tpl = getattr(self._meta, 'filename', None)
-        if tpl is None:
-            return None
-        return tpl.format(self=self)
+        self._storage = StringIO()
+        self._zip = ZipFile(self._storage, 'w')
+        self._old_zip = None
+        self.package = None
+        super(Zipped, self).__init__(*args, **nargs)
+
+    @classmethod
+    def load(cls, package):
+        try:
+            zf = ZipFile(StringIO(package))
+        except BadZipfile:
+            zf = ZipFile(package)
+        entry = getattr(cls._meta, 'entry', '')
+        root = zf.read(entry)
+        res = super(Zipped, cls).load(root)
+        res._old_zip = zf
+        res.package = package
+        return res
 
     def save(self):
-        """@todo: Docstring for save
-        :returns: @todo
-
-        """
-        fn = self._fn
-        if fn is None:
+        self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
+        entry = getattr(self._meta, 'entry', '')
+        if not self.package or not entry:
             return
-        with open(fn, 'wb') as fp:
-            fp.write(str(self))
+        with self._zip as zf:
+            zf.writestr(entry, str(self))
+            if self._old_zip:
+                new_names = frozenset(zf.namelist())
+                for n in self._old_zip.namelist():
+                    if n not in new_names:
+                        zf.writestr(n, self._old_zip.read(n))
+        open(self.package, 'wb').write(self._storage.getvalue())
 
 
 if __name__ == '__main__':
