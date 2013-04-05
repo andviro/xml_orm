@@ -258,11 +258,11 @@ class Schema(object):
         for field in new_elt._fields:
             if field.tag is None:
                 if n:
-                    setattr(new_elt, field.name, root[n - 1].tail)
+                    setattr(new_elt, field.name, field.validate(root[n - 1].tail))
                 else:
-                    setattr(new_elt, field.name, root.text)
+                    setattr(new_elt, field.name, field.validate(root.text))
             elif field.tag.startswith('@'):
-                setattr(new_elt, field.name, root.attrib[field.tag[1:]])
+                setattr(new_elt, field.name, field.validate(root.attrib[field.tag[1:]]))
             else:
                 if field.maxOccurs == 1:
                     val = field.load_one(root[n])
@@ -271,14 +271,14 @@ class Schema(object):
                             field.name)
                     else:
                         n += 1
-                    setattr(new_elt, field.name, val)
+                    setattr(new_elt, field.name, field.validate(val))
                 else:
                     res = []
                     while n < len(root):
                         val = field.load_one(root[n])
                         if val is None:
                             break
-                        res.append(val)
+                        res.append(field.validate(val))
                         n += 1
                     field.check_len(res)
                     setattr(new_elt, field.name, res)
@@ -336,9 +336,6 @@ class Schema(object):
 
     def __exit__(self, *args):
         self.save()
-
-    def data(self):
-        return str(self)
 
     def save(self):
         pass
