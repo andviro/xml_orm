@@ -357,10 +357,6 @@ class Schema(object):
         with open(fn, 'wb') as fp:
             fp.write(str(self))
 
-    @classmethod
-    def create(cls, *args, **kwargs):
-        return cls(*args, **kwargs)
-
 
 if __name__ == '__main__':
     import doctest

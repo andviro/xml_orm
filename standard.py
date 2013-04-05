@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import core
 from zipfile import ZipFile
+from cStringIO import StringIO
 from uuid import uuid4
 
 
@@ -17,6 +18,14 @@ class Zipped(object):
         if tpl is None:
             return None
         return tpl.format(self=self)
+
+    def __init__(self, *args, **nargs):
+        """@todo: Docstring for __init__
+        :returns: @todo
+
+        """
+        self.__backing_storage = ZipFile(StringIO(), 'w')
+        super(Zipped, self).__init__(*args, **nargs)
 
     def save(self):
         entry, fn = self._fn, self._package
@@ -116,32 +125,17 @@ class TransInfo(core.Schema):
         pretty_print = True
         filename = 'packageDescription.xml'
 
-    @classmethod
-    def create(self, *args, **kwargs):
-        """@todo: Docstring for create
-
-        :*args: @todo
-        :**kwargs: @todo
-        :returns: @todo
-
-        """
-        if 'doc_id' not in kwargs:
-            kwargs['doc_id'] = uuid4().hex
-        res = super(TransInfo, self).create(*args, **kwargs)
-        res._uid = uuid4().hex
-        return res
-
 
 class ContainerFNS(Zipped, TransInfo):
     """Docstring for ContainerFNS """
 
     class Meta:
-        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self._uid}'
+        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
 
 if __name__ == '__main__':
-    with ContainerFNS.create() as ti:
+    with ContainerFNS(doc_id=uuid4().hex, uid=uuid4().hex) as ti:
         ti.sender = Sender(uid=uuid4().hex)
         ti.receiver = Receiver(uid=uuid4().hex)
         ti.sos = SOS(uid=u'2AE')
