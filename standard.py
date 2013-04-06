@@ -119,18 +119,6 @@ class ContainerFNS(core.Zipped, TransInfo):
         self.uid = uuid4().hex
         super(ContainerFNS, self).__init__(*args, **nargs)
 
-    def add_file(self, name, content):
-        u''' Добавление файла в ZIP-контейнер.
-
-        :name: Имя файла в архиве
-        :content: Байтовая строка с содержимым
-
-        Добавленные таким образом файлы сохранятся в архиве после вызова метода save().
-        Рекомендуется применять, где возможно, оператор with.
-
-        '''
-        self._zip.writestr(name, content)
-
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть
         # изменено.
