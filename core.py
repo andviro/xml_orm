@@ -358,14 +358,29 @@ class Zipped(object):
     def load(cls, package):
         try:
             zf = ZipFile(StringIO(package))
+            has_filename = False
         except BadZipfile:
             zf = ZipFile(package)
+            has_filename = isinstance(package, basestring)
         entry = getattr(cls._meta, 'entry', '')
         root = zf.read(entry)
         res = super(Zipped, cls).load(root)
         res._old_zip = zf
-        res.package = package
+        if has_filename:
+            res.package = package
         return res
+
+    def add_file(self, name, content):
+        u''' Добавление файла в ZIP-контейнер.
+
+        :name: Имя файла в архиве
+        :content: Байтовая строка с содержимым
+
+        Добавленные таким образом файлы сохранятся в архиве после вызова метода save().
+        Рекомендуется применять, где возможно, оператор with.
+
+        '''
+        self._zip.writestr(name, content)
 
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
