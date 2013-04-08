@@ -96,9 +96,21 @@ class SimpleField(_SortedEntry):
             return res
 
     def check_len(self, val):
-        assert len(val) >= self.minOccurs, u'not enough values of field {0}'.format(self.name)
+        res = len(val)
+        assert res >= self.minOccurs, u'not enough values of field {0}'.format(self.name)
         if self.maxOccurs != 'unbounded':
-            assert len(val) <= self.maxOccurs, u'too many values of field {0}'.format(self.name)
+            assert res <= self.maxOccurs, u'too many values of field {0}'.format(self.name)
+        return res
+
+
+class RawField(SimpleField):
+    """Docstring for RawField """
+
+    def load(self, root, ns):
+        return root
+
+    def xml(self, value, ns):
+        return value
 
 
 class BooleanField(SimpleField):
@@ -116,17 +128,19 @@ class CharField(SimpleField):
     Строковое поле с ограничением максимальной длины
 
     '''
-    def __init__(self, max_length=None, *args, **nargs):
+    def __init__(self, *args, **kwargs):
         """@todo: Docstring for __init__
 
         :max_length: максимальная длина строки
         :*args: @todo
-        :**nargs: @todo
+        :**kwargs: @todo
         :returns: @todo
 
         """
+        max_length = kwargs.pop('max_length', None)
         assert max_length is not None, u'CharField requires max_length'
         self.max_length = max_length
+        super(CharField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
         assert len(value) <= self.max_length, u'String too long for CharField'
@@ -162,20 +176,25 @@ class DecimalField(SimpleField):
 
     '''
 
-    def __init__(self, max_digits=None, decimal_places=None, *args, **nargs):
+    def __init__(self, max_digits=None, decimal_places=None, *args, **kwargs):
         """@todo: Docstring for __init__
 
         :max_digits: число значащих цифр
         :decimal_places: точность
         :*args: @todo
-        :**nargs): @todo
+        :**kwargs): @todo
         :returns: @todo
 
         """
+        max_digits = kwargs.pop('max_digits', None)
         assert max_digits is not None, u'required argument max_digits missing'
         self.max_digits = max_digits
+
+        decimal_places = kwargs.pop('decimal_places', None)
         assert decimal_places is not None, u'required argument decimal_places missing'
         self.decimal_places = decimal_places
+
+        super(DecimalField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
         return decimal.Decimal(value)
@@ -187,7 +206,7 @@ class DecimalField(SimpleField):
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
-    def __init__(self, cls, use_schema_ns=False, *args, **kwargs):
+    def __init__(self, cls, *args, **kwargs):
         """@todo: to be defined
 
         :name: @todo
@@ -196,9 +215,10 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        super(ComplexField, self).__init__(tag=cls._meta.root, *args, **kwargs)
         self.cls = cls
+        use_schema_ns = kwargs.pop('use_schema_ns', False)
         self.use_schema_ns = use_schema_ns
+        super(ComplexField, self).__init__(cls._meta.root, *args, **kwargs)
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -331,7 +351,6 @@ class Schema(object):
         else:
             ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace)
         qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
-        print qn, ns, root.tag
         assert etree.QName(root) == qn, u'load: invalid xml tree root'
         new_elt = cls()
         n = 0
@@ -339,8 +358,11 @@ class Schema(object):
             if field.tag is None:
                 setattr(new_elt, field.name, field.to_python(root[n - 1].tail if n else root.text))
             elif field.is_attribute:
-                setattr(new_elt, field.name,
-                        field.to_python(root.attrib[field.qname(ns)]))
+                val = root.get(field.qname(ns), None)
+                assert (field.minOccurs == 0 or val is not None or field.has_default
+                        is not None), u'required attribute {0} missing'.format(field.name)
+                val = field.default if val is None and field.has_default else val
+                setattr(new_elt, field.name, field.to_python(val))
             else:
                 res = []
                 while n < len(root):
@@ -348,8 +370,8 @@ class Schema(object):
                         break
                     res.append(field.load(root[n], ns))
                     n += 1
-                field.check_len(res)
-                setattr(new_elt, field.name, res if field.maxOccurs != 1 else res[0])
+                if field.check_len(res):
+                    setattr(new_elt, field.name, res if field.maxOccurs != 1 else res[0])
         return new_elt
 
     def xml(self, ns=None):
@@ -412,7 +434,7 @@ class Schema(object):
 
 class Zipped(object):
 
-    def __init__(self, *args, **nargs):
+    def __init__(self, *args, **kwargs):
         """@todo: Docstring for __init__
         :returns: @todo
 
@@ -421,7 +443,7 @@ class Zipped(object):
         self._zip = ZipFile(self._storage, 'w')
         self._old_zip = None
         self.package = None
-        super(Zipped, self).__init__(*args, **nargs)
+        super(Zipped, self).__init__(*args, **kwargs)
 
     @classmethod
     def load(cls, package):

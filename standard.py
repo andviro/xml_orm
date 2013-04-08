@@ -70,18 +70,20 @@ class Document(core.Schema):
     u"""Дескриптор документа.
 
     """
+    # атрибуты документа
+    type_code = core.CharField(u'@кодТипаДокумента', max_length=2, default=u'01')
+    type = core.SimpleField(u'@типДокумента', default=u'счетфактура')
+    content_type = core.SimpleField(u'@типСодержимого', default=u'xml')
+    compressed = core.BooleanField(u'@сжат', default=False)
+    encrypted = core.BooleanField(u'@зашифрован', default=False)
+    sign_required = core.BooleanField(u'@ОжидаетсяПодписьПолучателя', minOccurs=0)
+    uid = core.SimpleField(u'@идентификаторДокумента')
+    orig_filename = core.SimpleField(u'@исходноеИмяФайла')
+
     # содержимое
     content = core.ComplexField(Content)
     # подписи, представляются в виде списка элементов типа Signature
     signature = core.ComplexField(Signature, maxOccurs='unbounded')
-
-    # атрибуты документа
-    uid = core.SimpleField(u'@идентификаторДокумента')
-    type_code = core.SimpleField(u'@кодТипаДокумента', default=u'01')
-    type = core.SimpleField(u'@типДокумента', default=u'счетфактура')
-    compressed = core.BooleanField(u'@сжат', default=False)
-    sign_required = core.BooleanField(u'@ОжидаетсяПодписьПолучателя', default=False)
-    orig_filename = core.SimpleField(u'@исходноеИмяФайла')
 
     class Meta:
         root = u'документ'
@@ -93,14 +95,15 @@ class TransInfo(core.Schema):
     """
     version = core.SimpleField(u'@версияФормата', default=u"ФНС:1.0")
     doc_type = core.SimpleField(u'@типДокументооборота', default=u"СчетФактура")
-    doc_code = core.SimpleField(u'@кодТипаДокументооборота', default=u"20")
+    doc_code = core.CharField(u'@кодТипаДокументооборота', max_length=2, default=u"20")
     doc_id = core.SimpleField(u'@идентификаторДокументооборота')
     trans_type = core.SimpleField(u'@типТранзакции', default=u'СчетФактураПродавец')
-    trans_code = core.SimpleField(u'@кодТипаТранзакции', default=u'01')
+    trans_code = core.CharField(u'@кодТипаТранзакции', max_length=2, default=u'01')
     soft_version = core.SimpleField(u'@ВерсПрог', default=u'АстралОтчет 1.0')
     sender = core.ComplexField(Sender)
     sos = core.ComplexField(SOS)
     receiver = core.ComplexField(Receiver)
+    extra = core.RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка
     document = core.ComplexField(Document, maxOccurs='unbounded')
 
