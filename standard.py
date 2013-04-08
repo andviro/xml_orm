@@ -89,6 +89,12 @@ class Document(core.Schema):
         root = u'документ'
 
 
+#Маска                     направление                 код протокола
+# FNS_*                            ФНС                                7
+# EDI_*                             ЭСФ                               20
+# r'stat' icase                   РосСТат                            4
+# r'\d{3}-\d{3}-\d{6}_'            ПФР                               2
+# SOS_*                           ЕГР 1С                          25
 class TransInfo(core.Schema):
     u""" XML-дескриптор контейнера.
 
@@ -96,8 +102,8 @@ class TransInfo(core.Schema):
     version = core.SimpleField(u'@версияФормата', default=u"ФНС:1.0")
     doc_type = core.SimpleField(u'@типДокументооборота', default=u"СчетФактура")
     doc_code = core.CharField(u'@кодТипаДокументооборота', max_length=2, default=u"20")
-    doc_id = core.SimpleField(u'@идентификаторДокументооборота')
-    trans_type = core.SimpleField(u'@типТранзакции', default=u'СчетФактураПродавец')
+    uid = core.SimpleField(u'@идентификаторДокументооборота')
+    transaction = core.SimpleField(u'@типТранзакции', default=u'СчетФактураПродавец')
     trans_code = core.CharField(u'@кодТипаТранзакции', max_length=2, default=u'01')
     soft_version = core.SimpleField(u'@ВерсПрог', default=u'АстралОтчет 1.0')
     sender = core.ComplexField(Sender)
@@ -105,7 +111,7 @@ class TransInfo(core.Schema):
     receiver = core.ComplexField(Receiver)
     extra = core.RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка
-    document = core.ComplexField(Document, maxOccurs='unbounded')
+    files = core.ComplexField(Document, maxOccurs='unbounded')
 
     class Meta:
         root = u'ТрансИнф'
@@ -114,12 +120,14 @@ class TransInfo(core.Schema):
 class ContainerFNS(core.Zipped, TransInfo):
     """Docstring for ContainerFNS """
 
+    protocol = 7
+
     def __init__(self, *args, **nargs):
         u''' Инициализация полей, которые не загружаются/сохраняются из
-        контейнера. В частности поле uid используется только для вновь
+        контейнера. В частности поле file_uid используется только для вновь
         созданных контейнеров при формировании имени архива.
         '''
-        self.uid = uuid4().hex
+        self.file_uid = uuid4().hex
         super(ContainerFNS, self).__init__(*args, **nargs)
 
     class Meta:
@@ -133,9 +141,24 @@ class ContainerFNS(core.Zipped, TransInfo):
         # управление форматированием сохраняемого XML
         pretty_print = True
 
-        package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.uid}'
+        package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
+
+class ContainerPFR(ContainerFNS):
+
+    class Meta:
+        root = u'Пакет'
+
+    protocol = 2
+
+    @property
+    def is_positive(self):
+        """@todo: Docstring for is_positive
+        :returns: @todo
+
+        """
+        assert self.trans
 
 if __name__ == '__main__':
     # Создание контейнера "с нуля"
@@ -143,7 +166,7 @@ if __name__ == '__main__':
     # для непереданных полей присваиваются значения по умолчанию
     # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
     # .save() или преобразовать контейнер в XML.
-    ti = ContainerFNS(doc_id=uuid4().hex)
+    ti = ContainerFNS(uid=uuid4().hex)
     ti.sender = Sender(uid=uuid4().hex)
     ti.receiver = Receiver(uid=uuid4().hex)
     ti.sos = SOS(uid=u'2AE')
