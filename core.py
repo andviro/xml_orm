@@ -58,7 +58,7 @@ class SimpleField(_SortedEntry):
 
     def qname(self, ns=None):
         ns = getattr(self.schema._meta, 'namespace', '') if ns is None else ns
-        return etree.QName(ns, self.tag) if ns and self.qualify else self.tag
+        return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
 
     def to_python(self, value):
         return value
@@ -90,7 +90,7 @@ class SimpleField(_SortedEntry):
                 ns = getattr(self.schema._meta, 'namespace', None) if ns is None else ns
             else:
                 ns = ''
-            nsmap = {None: ns} if ns is not None else None
+            nsmap = {None: ns, u't': ns} if ns is not None else None
             res = etree.Element(self.tag, nsmap=nsmap)
             res.text = val
             return res
@@ -212,18 +212,18 @@ class ComplexField(SimpleField):
 
     def xml(self, val, ns=None):
         if not self.use_schema_ns:
-            ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
+            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
         return val.xml(ns=ns)
 
     def load(self, root, ns=None):
         if not self.use_schema_ns:
-            ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
+            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
         return self.cls.load(root, ns)
 
     def qname(self, ns=None):
         if not self.use_schema_ns:
             ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
-        return etree.QName(ns, self.tag) if ns and self.qualify else self.tag
+        return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
 
 
 def _find(lst, name):
@@ -325,8 +325,13 @@ class Schema(object):
                 root = etree.parse(root).getroot()
         elif hasattr(root, 'read'):
             root = etree.parse(root).getroot()
-        ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace) if active_ns is None else active_ns
+
+        if active_ns is not None:
+            ns = active_ns
+        else:
+            ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace)
         qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
+        print qn, ns, root.tag
         assert etree.QName(root) == qn, u'load: invalid xml tree root'
         new_elt = cls()
         n = 0
@@ -349,7 +354,7 @@ class Schema(object):
 
     def xml(self, ns=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
-        nsmap = {None: ns} if ns is not None else None
+        nsmap = {None: ns, u't': ns} if ns is not None else None
         root = etree.Element(self._meta.root, nsmap=nsmap)
         prev_elt = None
         for field in self._fields:
@@ -369,7 +374,7 @@ class Schema(object):
                 else:
                     prev_elt.tail = value
             elif field.is_attribute:
-                root.attrib[field.qname(ns)] = ' '.join(value) if isinstance(value, list) else value
+                root.set(field.qname(ns), ' '.join(value) if isinstance(value, list) else value)
             else:
                 prev_elt = value
                 if isinstance(value, list):

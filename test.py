@@ -9,7 +9,7 @@ class Document(core.Schema):
     class Meta:
         root = u'Документ'
         namespace = u'http://www.example.com/ns2'
-        encoding='cp1251'
+        encoding = 'cp1251'
 
 
 class Author(core.Schema):
@@ -21,11 +21,12 @@ class Author(core.Schema):
 
 
 class Signature(core.Schema):
-    uid = core.SimpleField(u'@ИД')
+    uid = core.SimpleField(u'@ИД', qualify=True)
     surname = core.SimpleField()
 
     class Meta:
         root = u'Подпись'
+        namespace = u'http://www.example.com/signature'
 
 
 class Book(core.Schema):
@@ -33,7 +34,7 @@ class Book(core.Schema):
     auth = core.ComplexField(Author)
     docs = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded',
                              use_schema_ns=False)
-    signer = core.ComplexField(Signature, minOccurs=0)
+    signer = core.ComplexField(Signature, minOccurs=0, use_schema_ns=False)
     abzats = core.SimpleField(u'Абзац')
 
     class Meta:
@@ -61,7 +62,7 @@ a.abzats = u'Абзац'
 a.izdat = u'Мурзилка'
 a.docs.append(Document(uid=1, name='xxx'))
 a.docs.append(Document(uid=2, name='yyy'))
-a.signer = Signature(surname=u'Большой начальник', uid=2)
+a.signer = Signature(surname=u'Большой начальник', uid=100)
 xml_string = str(a)
 print unicode(a)
 b = Article.load(xml_string)
