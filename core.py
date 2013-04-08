@@ -5,6 +5,7 @@ from lxml import etree
 from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
 from cStringIO import StringIO
+import decimal
 
 
 class _SortedEntry(object):
@@ -103,10 +104,92 @@ class BooleanField(SimpleField):
     """Docstring for BooleanField """
 
     def to_string(self, val):
-        return unicode(val).lower()
+        return unicode(bool(val)).lower()
 
     def to_python(self, root):
         return root.text == 'true'
+
+
+class CharField(SimpleField):
+    u'''
+    Строковое поле с ограничением максимальной длины
+
+    '''
+    def __init__(self, max_length=None, *args, **nargs):
+        """@todo: Docstring for __init__
+
+        :max_length: максимальная длина строки
+        :*args: @todo
+        :**nargs: @todo
+        :returns: @todo
+
+        """
+        assert self._max_length is not None, u'CharField requires max_length'
+        self._max_length = max_length
+
+    def validate(self, value):
+        assert len(value) <= self._max_length, u'String too long for CharField'
+        return value
+
+
+class FloatField(SimpleField):
+    u'''Принимает любой объект, который можно конвертировать во float.
+
+    '''
+
+    def validate(self, value):
+        return float(value)
+
+    def to_string(self, val):
+        return unicode(val)
+
+    def to_python(self, root):
+        return float(root.text)
+
+
+class IntegerField(SimpleField):
+    u'''Принимает любой объект, который можно конвертировать в int.
+
+    '''
+
+    def validate(self, value):
+        return int(value)
+
+    def to_string(self, val):
+        return unicode(val)
+
+    def to_python(self, root):
+        return int(root.text)
+
+
+class DecimalField(SimpleField):
+    u'''Хранит значения типа Decimal
+
+    '''
+
+    def __init__(self, max_digits, decimal_places, *args, **nargs):
+        """@todo: Docstring for __init__
+
+        :max_digits: число значащих цифр
+        :decimal_places: точность
+        :*args: @todo
+        :**nargs): @todo
+        :returns: @todo
+
+        """
+        assert max_digits is not None, u'required argument max_digits missing'
+        self._max_digits = max_digits
+        assert decimal_places is not None, u'required argument decimal_places missing'
+        self._decimal_places = decimal_places
+
+    def validate(self, value):
+        return decimal.Decimal(value)
+
+    def to_string(self, val):
+        return unicode(val)
+
+    def to_python(self, root):
+        return decimal.Decimal(root.text)
 
 
 class ComplexField(SimpleField):
