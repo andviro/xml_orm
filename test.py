@@ -9,6 +9,7 @@ class Document(core.Schema):
     class Meta:
         root = u'Документ'
         namespace = u'http://www.example.com/ns2'
+        encoding='cp1251'
 
 
 class Author(core.Schema):
@@ -30,7 +31,8 @@ class Signature(core.Schema):
 class Book(core.Schema):
     uid = core.SimpleField(u'@ИД')
     auth = core.ComplexField(Author)
-    docs = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    docs = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded',
+                             use_schema_ns=False)
     signer = core.ComplexField(Signature, minOccurs=0)
     abzats = core.SimpleField(u'Абзац')
 

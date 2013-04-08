@@ -35,7 +35,14 @@ class SimpleField(_SortedEntry):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
-        self.qualify = qualify
+        self.is_attribute = False
+        if tag:
+            self.is_attribute = tag.startswith('@')
+            self.tag = tag[1:] if self.is_attribute else self.tag
+        if self.is_attribute:
+            self.qualify = qualify is not None and qualify
+        else:
+            self.qualify = qualify is None or qualify
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
@@ -48,6 +55,10 @@ class SimpleField(_SortedEntry):
             self.default = kwargs['default']
         else:
             self.has_default = False
+
+    def qname(self, ns=None):
+        ns = getattr(self.schema._meta, 'namespace', '') if ns is None else ns
+        return etree.QName(ns, self.tag) if ns and self.qualify else self.tag
 
     def to_python(self, value):
         return value
@@ -62,33 +73,24 @@ class SimpleField(_SortedEntry):
         """
         self.schema = cls
         self.name = name
-
-        if self.tag is not None:
-            if self.tag.startswith('@'):
-                qualify = self.qualify is not None and self.qualify
-                tag = self.tag[1:]
-            else:
-                qualify = self.qualify or self.qualify is None
-                tag = self.tag
-
-            ns = getattr(cls._meta, 'namespace', '') if qualify else ''
-            self.qname = unicode(etree.QName(ns, tag)) if ns else tag
-
-        cls._fields_ref[name] = self
         cls._fields.append(self)
 
     def to_string(self, val):
         return unicode(val)
 
-    def load(self, root):
+    def load(self, root, ns):
         return self.to_python(root.text)
 
-    def xml(self, value):
+    def xml(self, value, ns=None):
         val = self.to_string(value)
-        if self.tag is None or self.tag.startswith('@'):
+        if self.tag is None or self.is_attribute:
             return val
         else:
-            nsmap = {None: getattr(self.schema._meta, 'namespace', '')}
+            if self.qualify:
+                ns = getattr(self.schema._meta, 'namespace', None) if ns is None else ns
+            else:
+                ns = ''
+            nsmap = {None: ns} if ns is not None else None
             res = etree.Element(self.tag, nsmap=nsmap)
             res.text = val
             return res
@@ -207,19 +209,21 @@ class ComplexField(SimpleField):
 
         """
         super(ComplexField, self).add_to_cls(cls, name)
-        if self.qualify or self.qualify is None:
-            ns = getattr((cls if self.use_schema_ns else self.cls)._meta, 'namespace', '')
-            tag = getattr(self.cls._meta, 'root')
-            self.qname = unicode(etree.QName(ns, tag)) if ns else tag
 
-    def xml(self, val):
-        return val.xml()
+    def xml(self, val, ns=None):
+        if not self.use_schema_ns:
+            ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
+        return val.xml(ns=ns)
 
-    def to_python(self, root):
-        return self.cls.load(root)
+    def load(self, root, ns=None):
+        if not self.use_schema_ns:
+            ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
+        return self.cls.load(root, ns)
 
-    def load(self, root):
-        return self.cls.load(root)
+    def qname(self, ns=None):
+        if not self.use_schema_ns:
+            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
+        return etree.QName(ns, self.tag) if ns and self.qualify else self.tag
 
 
 def _find(lst, name):
@@ -251,7 +255,6 @@ class _MetaSchema(type):
         new_cls._meta = type('Meta', (object,), meta_attrs)
 
         new_cls._fields = []
-        new_cls._fields_ref = {}
         if len(parents):
             new_attrs = [(f.name, deepcopy(f)) for f in parents[0]
                          ._fields if isinstance(f, SimpleField)]
@@ -294,21 +297,21 @@ class Schema(object):
         :returns: @todo
 
         """
-        for name, field in self._fields_ref.items():
+        for field in self._fields:
             value = None
-            if name in kwargs:
-                value = kwargs.pop(name)
+            if field.name in kwargs:
+                value = kwargs.pop(field.name)
             elif field.has_default:
                 value = field.default
             elif field.maxOccurs != 1:
                 value = []
             if value is not None:
-                setattr(self, name, value)
+                setattr(self, field.name, value)
         for name, value in kwargs.items():
             setattr(self, name, value)
 
     @classmethod
-    def load(cls, root):
+    def load(cls, root, active_ns=None):
         """@todo: Docstring for load
 
         :root: @todo
@@ -322,7 +325,7 @@ class Schema(object):
                 root = etree.parse(root).getroot()
         elif hasattr(root, 'read'):
             root = etree.parse(root).getroot()
-        ns = getattr(cls._meta, 'namespace', '')
+        ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace) if active_ns is None else active_ns
         qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
         assert etree.QName(root) == qn, u'load: invalid xml tree root'
         new_elt = cls()
@@ -330,21 +333,23 @@ class Schema(object):
         for field in new_elt._fields:
             if field.tag is None:
                 setattr(new_elt, field.name, field.to_python(root[n - 1].tail if n else root.text))
-            elif field.tag.startswith('@'):
-                setattr(new_elt, field.name, field.to_python(root.attrib[field.tag[1:]]))
+            elif field.is_attribute:
+                setattr(new_elt, field.name,
+                        field.to_python(root.attrib[field.qname(ns)]))
             else:
                 res = []
                 while n < len(root):
-                    if field.qname != etree.QName(root[n]):
+                    if field.qname(ns) != etree.QName(root[n]):
                         break
-                    res.append(field.load(root[n]))
+                    res.append(field.load(root[n], ns))
                     n += 1
                 field.check_len(res)
                 setattr(new_elt, field.name, res if field.maxOccurs != 1 else res[0])
         return new_elt
 
-    def xml(self):
-        nsmap = {None: getattr(self._meta, 'namespace', '')}
+    def xml(self, ns=None):
+        ns = getattr(self._meta, 'namespace', None) if ns is None else ns
+        nsmap = {None: ns} if ns is not None else None
         root = etree.Element(self._meta.root, nsmap=nsmap)
         prev_elt = None
         for field in self._fields:
@@ -355,16 +360,16 @@ class Schema(object):
                 continue
             if isinstance(value, list):
                 field.check_len(value)
-                value = [field.xml(v) for v in value]
+                value = [field.xml(v, ns) for v in value]
             else:
-                value = field.xml(value)
+                value = field.xml(value, ns)
             if field.tag is None:
                 if prev_elt is None:
                     root.text = value
                 else:
                     prev_elt.tail = value
-            elif field.tag.startswith('@'):
-                root.attrib[field.tag[1:]] = ' '.join(value) if isinstance(value, list) else value
+            elif field.is_attribute:
+                root.attrib[field.qname(ns)] = ' '.join(value) if isinstance(value, list) else value
             else:
                 prev_elt = value
                 if isinstance(value, list):
