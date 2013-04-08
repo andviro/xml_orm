@@ -21,6 +21,7 @@ class SimpleField(_SortedEntry):
 
     '''
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
+                 qualify=None,
                  getter=None,
                  setter=None,
                  insert_before=None,
@@ -34,6 +35,7 @@ class SimpleField(_SortedEntry):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
+        self.qualify = qualify
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
@@ -47,22 +49,7 @@ class SimpleField(_SortedEntry):
         else:
             self.has_default = False
 
-    def load_one(self, root):
-        """@todo: Docstring for load
-
-        :obj: @todo
-        :root: @todo
-        :returns: @todo
-
-        """
-        ns = getattr(self.schema._meta, 'namespace', '')
-        qn = etree.QName(ns, self.tag) if ns else self.tag
-        if qn == etree.QName(root):
-            return self.to_python(root)
-        else:
-            return None
-
-    def validate(self, value):
+    def to_python(self, value):
         return value
 
     def add_to_cls(self, cls, name):
@@ -75,14 +62,26 @@ class SimpleField(_SortedEntry):
         """
         self.schema = cls
         self.name = name
+
+        if self.tag is not None:
+            if self.tag.startswith('@'):
+                qualify = self.qualify is not None and self.qualify
+                tag = self.tag[1:]
+            else:
+                qualify = self.qualify or self.qualify is None
+                tag = self.tag
+
+            ns = getattr(cls._meta, 'namespace', '') if qualify else ''
+            self.qname = unicode(etree.QName(ns, tag)) if ns else tag
+
         cls._fields_ref[name] = self
         cls._fields.append(self)
 
     def to_string(self, val):
         return unicode(val)
 
-    def to_python(self, root):
-        return root.text
+    def load(self, root):
+        return self.to_python(root.text)
 
     def xml(self, value):
         val = self.to_string(value)
@@ -106,8 +105,8 @@ class BooleanField(SimpleField):
     def to_string(self, val):
         return unicode(bool(val)).lower()
 
-    def to_python(self, root):
-        return root.text == 'true'
+    def to_python(self, value):
+        return value == 'true'
 
 
 class CharField(SimpleField):
@@ -124,11 +123,11 @@ class CharField(SimpleField):
         :returns: @todo
 
         """
-        assert self._max_length is not None, u'CharField requires max_length'
-        self._max_length = max_length
+        assert max_length is not None, u'CharField requires max_length'
+        self.max_length = max_length
 
-    def validate(self, value):
-        assert len(value) <= self._max_length, u'String too long for CharField'
+    def to_python(self, value):
+        assert len(value) <= self.max_length, u'String too long for CharField'
         return value
 
 
@@ -137,14 +136,11 @@ class FloatField(SimpleField):
 
     '''
 
-    def validate(self, value):
+    def to_python(self, value):
         return float(value)
 
     def to_string(self, val):
         return unicode(val)
-
-    def to_python(self, root):
-        return float(root.text)
 
 
 class IntegerField(SimpleField):
@@ -152,14 +148,11 @@ class IntegerField(SimpleField):
 
     '''
 
-    def validate(self, value):
+    def to_python(self, value):
         return int(value)
 
     def to_string(self, val):
         return unicode(val)
-
-    def to_python(self, root):
-        return int(root.text)
 
 
 class DecimalField(SimpleField):
@@ -167,7 +160,7 @@ class DecimalField(SimpleField):
 
     '''
 
-    def __init__(self, max_digits, decimal_places, *args, **nargs):
+    def __init__(self, max_digits=None, decimal_places=None, *args, **nargs):
         """@todo: Docstring for __init__
 
         :max_digits: число значащих цифр
@@ -178,24 +171,21 @@ class DecimalField(SimpleField):
 
         """
         assert max_digits is not None, u'required argument max_digits missing'
-        self._max_digits = max_digits
+        self.max_digits = max_digits
         assert decimal_places is not None, u'required argument decimal_places missing'
-        self._decimal_places = decimal_places
+        self.decimal_places = decimal_places
 
-    def validate(self, value):
+    def to_python(self, value):
         return decimal.Decimal(value)
 
     def to_string(self, val):
         return unicode(val)
 
-    def to_python(self, root):
-        return decimal.Decimal(root.text)
-
 
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
-    def __init__(self, cls, *args, **kwargs):
+    def __init__(self, cls, use_schema_ns=False, *args, **kwargs):
         """@todo: to be defined
 
         :name: @todo
@@ -205,32 +195,31 @@ class ComplexField(SimpleField):
 
         """
         super(ComplexField, self).__init__(tag=cls._meta.root, *args, **kwargs)
-        self._cls = cls
+        self.cls = cls
+        self.use_schema_ns = use_schema_ns
 
-    def validate(self, value):
-        assert isinstance(value, self._cls)
-        return value
+    def add_to_cls(self, cls, name):
+        """@todo: Docstring for _add_to_cls
 
-    def xml(self, val):
-        return self.validate(val).xml()
-
-    def to_python(self, root):
-        return self._cls.load(root)
-
-    def load_one(self, root):
-        """@todo: Docstring for load
-
-        :obj: @todo
-        :root: @todo
+        :cls: @todo
+        :name: @todo
         :returns: @todo
 
         """
-        ns = getattr(self._cls._meta, 'namespace', '')
-        qn = etree.QName(ns, self._cls._meta.root) if ns else self._cls._meta.root
-        if unicode(qn) == unicode(etree.QName(root)):
-            return self.to_python(root)
-        else:
-            return None
+        super(ComplexField, self).add_to_cls(cls, name)
+        if self.qualify or self.qualify is None:
+            ns = getattr((cls if self.use_schema_ns else self.cls)._meta, 'namespace', '')
+            tag = getattr(self.cls._meta, 'root')
+            self.qname = unicode(etree.QName(ns, tag)) if ns else tag
+
+    def xml(self, val):
+        return val.xml()
+
+    def to_python(self, root):
+        return self.cls.load(root)
+
+    def load(self, root):
+        return self.cls.load(root)
 
 
 def _find(lst, name):
@@ -308,9 +297,9 @@ class Schema(object):
         for name, field in self._fields_ref.items():
             value = None
             if name in kwargs:
-                value = field.validate(kwargs.pop(name))
+                value = kwargs.pop(name)
             elif field.has_default:
-                value = field.validate(field.default)
+                value = field.default
             elif field.maxOccurs != 1:
                 value = []
             if value is not None:
@@ -340,31 +329,18 @@ class Schema(object):
         n = 0
         for field in new_elt._fields:
             if field.tag is None:
-                if n:
-                    setattr(new_elt, field.name, field.validate(root[n - 1].tail))
-                else:
-                    setattr(new_elt, field.name, field.validate(root.text))
+                setattr(new_elt, field.name, field.to_python(root[n - 1].tail if n else root.text))
             elif field.tag.startswith('@'):
-                setattr(new_elt, field.name, field.validate(root.attrib[field.tag[1:]]))
+                setattr(new_elt, field.name, field.to_python(root.attrib[field.tag[1:]]))
             else:
-                if field.maxOccurs == 1:
-                    val = field.load_one(root[n])
-                    if val is None:
-                        assert field.minOccurs == 0, u'load: required field {0} not found'.format(
-                            field.name)
-                    else:
-                        n += 1
-                    setattr(new_elt, field.name, field.validate(val))
-                else:
-                    res = []
-                    while n < len(root):
-                        val = field.load_one(root[n])
-                        if val is None:
-                            break
-                        res.append(field.validate(val))
-                        n += 1
-                    field.check_len(res)
-                    setattr(new_elt, field.name, res)
+                res = []
+                while n < len(root):
+                    if field.qname != etree.QName(root[n]):
+                        break
+                    res.append(field.load(root[n]))
+                    n += 1
+                field.check_len(res)
+                setattr(new_elt, field.name, res if field.maxOccurs != 1 else res[0])
         return new_elt
 
     def xml(self):
