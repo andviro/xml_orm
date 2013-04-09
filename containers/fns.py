@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-import core
 import sys
 from uuid import uuid4
+from .. import core
 
 
 class Sender(core.Schema):
@@ -144,21 +144,6 @@ class ContainerFNS(core.Zipped, TransInfo):
         package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
-
-class ContainerPFR(ContainerFNS):
-
-    class Meta:
-        root = u'Пакет'
-
-    protocol = 2
-
-    @property
-    def is_positive(self):
-        """@todo: Docstring for is_positive
-        :returns: @todo
-
-        """
-        assert self.trans
 
 if __name__ == '__main__':
     # Создание контейнера "с нуля"
