@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from .. import core
-from .fns import Sender, Content, Signature, ContainerFNS, Document, SOS
-from uuid import uuid4
+import core
+from .fns import Sender, Content, Signature, Document
 
 
 class PFRSender(Sender):
@@ -83,12 +82,11 @@ class PFRInfo(core.Schema):
 
     class Meta:
         root = u'пакет'
+        pretty_print = True
+        encoding='utf-8'
 
 
-class ContainerPFR(ContainerFNS):
-
-    class Meta:
-        root = u'Пакет'
+class ContainerPFR(core.Zipped, PFRInfo):
 
     protocol = 2
 

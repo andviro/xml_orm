@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 import sys
 from uuid import uuid4
-from .. import core
+import core
 
 
 class Sender(core.Schema):
