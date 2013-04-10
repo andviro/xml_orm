@@ -440,8 +440,7 @@ class Zipped(object):
         :returns: @todo
 
         """
-        self._storage = StringIO()
-        self._zip = ZipFile(self._storage, 'w')
+        self._storage = {}
         self._old_zip = None
         self.package = None
         super(Zipped, self).__init__(*args, **kwargs)
@@ -472,21 +471,32 @@ class Zipped(object):
         Рекомендуется применять, где возможно, оператор with.
 
         '''
-        self._zip.writestr(name, content)
+        self._storage[name] = content
 
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
-        entry = getattr(self._meta, 'entry', '')
-        if not self.package or not entry:
+        if not self.package:
             return
-        with self._zip as zf:
-            zf.writestr(entry, str(self))
+        open(self.package, 'wb').write(self.raw_content)
+
+    @property
+    def raw_content(self):
+        """@todo: Docstring for raw_content
+        :returns: @todo
+
+        """
+        storage = StringIO()
+        entry = getattr(self._meta, 'entry', None)
+        with ZipFile(storage, 'w') as zf:
+            if entry:
+                zf.writestr(entry, str(self))
             if self._old_zip:
-                new_names = frozenset(zf.namelist())
                 for n in self._old_zip.namelist():
-                    if n not in new_names:
+                    if n not in self._storage:
                         zf.writestr(n, self._old_zip.read(n))
-        open(self.package, 'wb').write(self._storage.getvalue())
+            for n in self._storage:
+                zf.writestr(n, self._storage[n])
+        return storage.getvalue()
 
 
 if __name__ == '__main__':

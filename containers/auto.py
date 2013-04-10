@@ -16,15 +16,26 @@ import os
 # SOS_*                           ЕГР 1С                          25
 
 
-def autoload(fn):
+def autoload(fn, content=None):
+    u'''
+    Автоопределение типа контейнера по имени файла.
+
+    :fn: путь к файлу (в него будет сохраняться контейнер!)
+    :content: необязательный источник загрузки. Может быть файловым объектом
+        или байтовой строкой. Если источник не указан, загрузка производится из
+        файла на диске по имени :fn:.
+
+    '''
     base = os.path.basename(fn)
     if base.startswith('FNS_'):
-        return ContainerFNS.load(fn)
+        res = ContainerFNS.load(content or fn)
     elif base.startswith('EDI_'):
-        return ContainerFNS.load(fn)
+        res = ContainerFNS.load(content or fn)
     elif re.match(r'\d{3}-\d{3}-\d{6}_.*', base):
-        return ContainerPFR.load(fn)
+        res = ContainerPFR.load(content or fn)
     elif base.lower().startswith('stat'):
-        return ContainerStat.load(fn)
+        res = ContainerStat.load(content or fn)
     else:
-        return None
+        res = None
+    if res:
+        res.package = fn
