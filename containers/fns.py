@@ -138,6 +138,14 @@ class ContainerFNS(core.Zipped, TransInfo):
         package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
 
+class ContainerEDI(ContainerFNS):
+
+    protocol = 20
+
+    class Meta:
+        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
+                   '_{self.doc_code}_{self.trans_code}_{self.document[0].type_code}.zip')
+
 
 if __name__ == '__main__':
     # Создание контейнера "с нуля"
