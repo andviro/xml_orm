@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 import core
-from .fns import Sender, Content, Signature, Document
+from .fns import Sender, Content, Signature
 
 
 class PFRSender(Sender):
@@ -46,9 +46,9 @@ class PFRDocument(core.Schema):
     uid = core.SimpleField(u'@идентификаторДокумента')
 
     # содержимое
-    content = core.ComplexField(Content)
+    content = core.ComplexField(Content, minOccurs=0)
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField(Signature, maxOccurs='unbounded')
+    signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'документ'
@@ -78,17 +78,28 @@ class PFRInfo(core.Schema):
     sos = core.ComplexField(PFRSystem)
     receiver = core.ComplexField(PFRReceiver)
     extra = core.RawField(u'расширения', minOccurs=0)
-    files = core.ComplexField(Document, maxOccurs='unbounded')
+    files = core.ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'пакет'
         pretty_print = True
-        encoding='utf-8'
+        encoding = 'utf-8'
 
 
 class ContainerPFR(core.Zipped, PFRInfo):
 
     protocol = 2
+
+    class Meta:
+        # имя файла с дескриптором в архиве. При наследовании может быть
+        # изменено.
+        entry = 'packageDescription.xml'
+
+        # кодировка в которой сохранится XML
+        encoding = 'cp1251'
+
+        # управление форматированием сохраняемого XML
+        pretty_print = True
 
     @property
     def is_positive(self):

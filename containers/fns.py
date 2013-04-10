@@ -81,20 +81,14 @@ class Document(core.Schema):
     orig_filename = core.SimpleField(u'@исходноеИмяФайла')
 
     # содержимое
-    content = core.ComplexField(Content)
+    content = core.ComplexField(Content, minOccurs=0)
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField(Signature, maxOccurs='unbounded')
+    signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'документ'
 
 
-#Маска                     направление                 код протокола
-# FNS_*                            ФНС                                7
-# EDI_*                             ЭСФ                               20
-# r'stat' icase                   РосСТат                            4
-# r'\d{3}-\d{3}-\d{6}_'            ПФР                               2
-# SOS_*                           ЕГР 1С                          25
 class TransInfo(core.Schema):
     u""" XML-дескриптор контейнера.
 
@@ -111,7 +105,7 @@ class TransInfo(core.Schema):
     receiver = core.ComplexField(Receiver)
     extra = core.RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка
-    files = core.ComplexField(Document, maxOccurs='unbounded')
+    files = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'ТрансИнф'

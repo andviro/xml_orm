@@ -360,7 +360,7 @@ class Schema(object):
             elif field.is_attribute:
                 val = root.get(field.qname(ns), None)
                 assert (field.minOccurs == 0 or val is not None or field.has_default
-                        is not None), u'required attribute {0} missing'.format(field.name)
+                        ), u'required attribute {0} missing'.format(field.name)
                 val = field.default if val is None and field.has_default else val
                 setattr(new_elt, field.name, field.to_python(val))
             else:
