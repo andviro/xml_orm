@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from .pfr import *
-from .fns import *
-from .stat import *
+from .pfr import ContainerPFR
+from .fns import ContainerFNS, ContainerEDI
+from .stat import ContainerStat
 
 import re
 import os
@@ -19,6 +19,8 @@ import os
 def autoload(fn):
     base = os.path.basename(fn)
     if base.startswith('FNS_'):
+        return ContainerFNS.load(fn)
+    elif base.startswith('EDI_'):
         return ContainerFNS.load(fn)
     elif re.match(r'\d{3}-\d{3}-\d{6}_.*', base):
         return ContainerPFR.load(fn)

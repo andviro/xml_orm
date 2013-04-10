@@ -229,6 +229,7 @@ class ComplexField(SimpleField):
 
         """
         super(ComplexField, self).add_to_cls(cls, name)
+        setattr(cls, name.capitalize(), staticmethod(self.cls))
 
     def xml(self, val, ns=None):
         if not self.use_schema_ns:

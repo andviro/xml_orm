@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-import sys
 from uuid import uuid4
 import core
 
@@ -105,7 +104,7 @@ class TransInfo(core.Schema):
     receiver = core.ComplexField(Receiver)
     extra = core.RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка
-    files = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'ТрансИнф'
@@ -136,7 +135,7 @@ class ContainerFNS(core.Zipped, TransInfo):
         pretty_print = True
 
         package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
-                   '_{self.doc_code}_{self.trans_code}_{self.files[0].type_code}.zip')
+                   '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')
 
 
 class ContainerEDI(ContainerFNS):
@@ -145,4 +144,4 @@ class ContainerEDI(ContainerFNS):
 
     class Meta:
         package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
-                   '_{self.doc_code}_{self.trans_code}_{self.files[0].type_code}.zip')
+                   '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')

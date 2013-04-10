@@ -78,7 +78,7 @@ class PFRInfo(core.Schema):
     sos = core.ComplexField(PFRSystem)
     receiver = core.ComplexField(PFRReceiver)
     extra = core.RawField(u'расширения', minOccurs=0)
-    files = core.ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
+    doc = core.ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'пакет'
