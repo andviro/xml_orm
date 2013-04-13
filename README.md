@@ -19,5 +19,5 @@
 
 ## Документация
 
-Документация поддерживается в [wiki проекта](xml_orm/wiki)
+Документация поддерживается в [wiki проекта](https://bitbucket.org/andviro/xml_orm/wiki)
 
