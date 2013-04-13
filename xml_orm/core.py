@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from lxml import etree
+try:
+    from lxml import etree
+except ImportError:
+    from xml.etree import ElementTree as etree
+
 from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
 from cStringIO import StringIO
@@ -492,7 +496,7 @@ class Zipped(object):
                 zf.writestr(entry, str(self))
             if self._old_zip:
                 for n in self._old_zip.namelist():
-                    if n not in self._storage:
+                    if n not in self._storage and n != entry:
                         zf.writestr(n, self._old_zip.read(n))
             for n in self._storage:
                 zf.writestr(n, self._storage[n])
