@@ -1,5 +1,5 @@
 # coding: utf-8
-import core
+from xml_orm import core
 
 
 class Document(core.Schema):

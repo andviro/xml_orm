@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from schemas.pfr import ContainerPFR
+from xml_orm.schemas.pfr import ContainerPFR
 from uuid import uuid4
 
 

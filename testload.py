@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 from glob import iglob
-from schemas.auto import autoload
+from xml_orm.schemas.auto import autoload
 
 
 def main():
