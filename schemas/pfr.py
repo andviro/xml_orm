@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-import core
+from .. import core
 from .fns import Sender, Content, Signature
 
 

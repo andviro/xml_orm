@@ -1,37 +1,36 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from containers.pfr import ContainerPFR, PFRSender, PFRReceiver, PFRDocument, SKZI
-from containers.fns import SOS, Signature, Content
+from schemas.pfr import ContainerPFR
 from uuid import uuid4
 
 
 def main():
-    # Создание контейнера "с нуля"
-    # в параметрах конструкторы можно передавать начальные значения полей
-    # для непереданных полей присваиваются значения по умолчанию
-    # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
-    # .save() или преобразовать контейнер в XML.
+    # РЎРѕР·РґР°РЅРёРµ РєРѕРЅС‚РµР№РЅРµСЂР° "СЃ РЅСѓР»СЏ"
+    # РІ РїР°СЂР°РјРµС‚СЂР°С… РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂС‹ РјРѕР¶РЅРѕ РїРµСЂРµРґР°РІР°С‚СЊ РЅР°С‡Р°Р»СЊРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РїРѕР»РµР№
+    # РґР»СЏ РЅРµРїРµСЂРµРґР°РЅРЅС‹С… РїРѕР»РµР№ РїСЂРёСЃРІР°РёРІР°СЋС‚СЃСЏ Р·РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+    # РЅРµРїСЂРёСЃРІРѕРµРЅРЅС‹Рµ РїРѕР»СЏ Р±РµР· СѓРјРѕР»С‡Р°РЅРёР№ Р±СЂРѕСЃСЏС‚ РёСЃРєР»СЋС‡РµРЅРёРµ РїСЂРё РїРѕРїС‹С‚РєРµ РІС‹Р·РІР°С‚СЊ
+    # .save() РёР»Рё РїСЂРµРѕР±СЂР°Р·РѕРІР°С‚СЊ РєРѕРЅС‚РµР№РЅРµСЂ РІ XML.
     ti = ContainerPFR(uid=uuid4().hex)
-    ti.sender = PFRSender(uid=uuid4().hex)
-    ti.skzi = SKZI(uid=uuid4().hex)
-    ti.receiver = PFRReceiver(uid=uuid4().hex)
-    ti.sos = SOS(uid=u'2AE')
+    ti.sender = ti.Sender(uid=uuid4().hex)
+    ti.skzi = ti.Skzi(uid=uuid4().hex)
+    ti.receiver = ti.Receiver(uid=uuid4().hex)
+    ti.sos = ti.Sos(uid=u'2AE')
     for n in range(3):
-        doc = PFRDocument()
+        doc = ti.Doc()
         doc.uid = uuid4().hex
         doc.orig_filename = doc.uid + '.xml'
-        doc.content = Content(filename=(doc.uid + '.bin'))
-        # Добавление дескриптора документа к дескриптору контейнера
-        ti.files.append(doc)
-        # Добавление собственно файла к содержимому контейнера
+        doc.content = doc.Content(filename=(doc.uid + '.bin'))
+        # Р”РѕР±Р°РІР»РµРЅРёРµ РґРµСЃРєСЂРёРїС‚РѕСЂР° РґРѕРєСѓРјРµРЅС‚Р° Рє РґРµСЃРєСЂРёРїС‚РѕСЂСѓ РєРѕРЅС‚РµР№РЅРµСЂР°
+        ti.doc.append(doc)
+        # Р”РѕР±Р°РІР»РµРЅРёРµ СЃРѕР±СЃС‚РІРµРЅРЅРѕ С„Р°Р№Р»Р° Рє СЃРѕРґРµСЂР¶РёРјРѕРјСѓ РєРѕРЅС‚РµР№РЅРµСЂР°
         ti.add_file(doc.content.filename, 'test document content')
         for k in range(2):
-            sig = Signature(filename=(uuid4().hex + '.bin'))
-            # Добавление дескриптора подписи к дескриптору документа
+            sig = doc.Signature(filename=(uuid4().hex + '.bin'))
+            # Р”РѕР±Р°РІР»РµРЅРёРµ РґРµСЃРєСЂРёРїС‚РѕСЂР° РїРѕРґРїРёСЃРё Рє РґРµСЃРєСЂРёРїС‚РѕСЂСѓ РґРѕРєСѓРјРµРЅС‚Р°
             doc.signature.append(sig)
-            # Добавление файла подписи к содержимому контейнера
+            # Р”РѕР±Р°РІР»РµРЅРёРµ С„Р°Р№Р»Р° РїРѕРґРїРёСЃРё Рє СЃРѕРґРµСЂР¶РёРјРѕРјСѓ РєРѕРЅС‚РµР№РЅРµСЂР°
             ti.add_file(sig.filename, 'test signature content')
-    print ti
+    print unicode(ti)
 
 if __name__ == "__main__":
     main()
