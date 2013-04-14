@@ -3,6 +3,32 @@
 
 from .. import core
 from .fns import Content, Signature
+from uuid import uuid4
+
+_doc_types = {
+    u'письмоРеспондент': (1, [
+        (u'письмо', 1),
+        (u'извещение', 2),
+    ]),
+    u'письмоОрганФСГС': (2, [
+        (u'письмо', 1),
+        (u'подтверждение', 2),
+        (u'извещение', 3),
+    ]),
+    u'рассылка': (3, [
+        (u'рассылка', 1),
+        (u'подтверждение', 2),
+    ]),
+    u'отчетСтат': (4, [
+        (u'отчет', 1),
+        (u'отчетИзвещение', 2),
+        (u'протокол', 3),
+        (u'протоколИзвещение', 4),
+    ]),
+    u'ОшибкаОбработкиПакета': (5, [
+        (u'уведомлениеОбОшибке', 1),
+    ])
+}
 
 
 class StatSender(core.Schema):
@@ -37,8 +63,8 @@ class StatDocument(core.Schema):
     signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
     type = core.SimpleField(u'@типДокумента')
     content_type = core.SimpleField(u'@типСодержимого')
-    compressed = core.SimpleField(u'@сжат')
-    encrypted = core.SimpleField(u'@зашифрован')
+    compressed = core.BooleanField(u'@сжат')
+    encrypted = core.BooleanField(u'@зашифрован')
     uid = core.SimpleField(u'@идентификаторДокумента')
 
 
@@ -58,7 +84,7 @@ class StatInfo(core.Schema):
     #получатель
     receiver = core.ComplexField(StatReceiver)
     #документ
-    files = core.ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
+    doc = core.ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
 
 
 class ContainerStat(core.Zipped, StatInfo):
@@ -66,10 +92,36 @@ class ContainerStat(core.Zipped, StatInfo):
 
     protocol = 4
 
+    def __init__(self, *args, **nargs):
+        u''' Инициализация полей, которые не загружаются/сохраняются из
+        контейнера. В частности поле file_uid используется только для вновь
+        созданных контейнеров при формировании имени архива.
+        '''
+        self.file_uid = uuid4().hex
+        super(ContainerStat, self).__init__(*args, **nargs)
+
+    @property
+    def doc_code(self):
+        u'''
+        Автоматически вычисляемый код типа документооборота
+        '''
+        doc_code, _ = _doc_types.get(self.doc_type, None)
+        return doc_code
+
+    @property
+    def trans_code(self):
+        u'''
+        Автоматически вычисляемый код типа транзакции
+        '''
+        _, tr_map = _doc_types.get(self.doc_type, (0, []))
+        return dict(tr_map).get(self.transaction, 0)
+
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть
         # изменено.
         entry = 'packageDescription.xml'
+
+        package = 'STAT_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}_{self.doc_code}_{self.trans_code}.zip'
 
         # кодировка в которой сохранится XML
         encoding = 'cp1251'
