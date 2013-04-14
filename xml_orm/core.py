@@ -150,6 +150,11 @@ class CharField(SimpleField):
         assert len(value) <= self.max_length, u'String too long for CharField'
         return value
 
+    def to_string(self, val):
+        s = unicode(val)
+        assert len(s) <= self.max_length, u'String too long for CharField'
+        return s
+
 
 class FloatField(SimpleField):
     u'''Принимает любой объект, который можно конвертировать во float.
@@ -160,7 +165,7 @@ class FloatField(SimpleField):
         return float(value)
 
     def to_string(self, val):
-        return unicode(val)
+        return unicode(float(val))
 
 
 class IntegerField(SimpleField):
@@ -172,7 +177,7 @@ class IntegerField(SimpleField):
         return int(value)
 
     def to_string(self, val):
-        return unicode(val)
+        return unicode(int(val))
 
 
 class DecimalField(SimpleField):
@@ -180,7 +185,7 @@ class DecimalField(SimpleField):
 
     '''
 
-    def __init__(self, max_digits=None, decimal_places=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """@todo: Docstring for __init__
 
         :max_digits: число значащих цифр
@@ -204,7 +209,12 @@ class DecimalField(SimpleField):
         return decimal.Decimal(value)
 
     def to_string(self, val):
-        return unicode(val)
+        if isinstance(val, decimal.Decimal):
+            context = decimal.getcontext().copy()
+            context.prec = self.max_digits
+            return unicode(val.quantize(decimal.Decimal(".1") ** self.decimal_places, context=context))
+        else:
+            return u"{0:.{1}f}".format(val, self.decimal_places)
 
 
 class ComplexField(SimpleField):
