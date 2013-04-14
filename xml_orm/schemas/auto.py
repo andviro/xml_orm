@@ -39,3 +39,4 @@ def autoload(fn, content=None):
         res = None
     if res:
         res.package = fn
+    return res
