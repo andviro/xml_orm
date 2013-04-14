@@ -3,6 +3,7 @@
 
 from .. import core
 from .fns import Sender, Content, Signature
+from uuid import uuid4
 
 
 class PFRSender(Sender):
@@ -90,10 +91,20 @@ class ContainerPFR(core.Zipped, PFRInfo):
 
     protocol = 2
 
+    def __init__(self, *args, **nargs):
+        u''' Инициализация полей, которые не загружаются/сохраняются из
+        контейнера. В частности поле file_uid используется только для вновь
+        созданных контейнеров при формировании имени архива.
+        '''
+        self.file_uid = uuid4().hex
+        super(ContainerPFR, self).__init__(*args, **nargs)
+
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть
         # изменено.
         entry = 'packageDescription.xml'
+
+        package = '{self.sender.uid}_{self.receiver.uid}_{self.file_uid}.zip'
 
         # кодировка в которой сохранится XML
         encoding = 'cp1251'
