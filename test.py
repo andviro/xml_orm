@@ -89,8 +89,122 @@ def test_nested():
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
-    #print d
-    #assert False
+
+
+@raises(core.DefinitionError)
+def test_bad_inheritance():
+    class GoodSchema(core.Schema):
+        s = core.SimpleField()
+
+    class AnotherGoodSchema(core.Schema):
+        s = core.SimpleField()
+
+    class BadSchema(GoodSchema, AnotherGoodSchema):
+        pass
+
+
+@raises(core.DefinitionError)
+def test_bad_max_occurs():
+    class BadSchema(core.Schema):
+        s = core.SimpleField(maxOccurs=0)
+
+
+@raises(core.DefinitionError)
+def test_bad_max_length():
+    class BadSchema(core.Schema):
+        s = core.CharField()
+
+
+@raises(core.DefinitionError)
+def test_bad_precision():
+    class BadSchema(core.Schema):
+        s = core.DecimalField(max_digits=10)
+
+
+@raises(core.DefinitionError)
+def test_bad_max_digits():
+    class BadSchema(core.Schema):
+        s = core.DecimalField(decimal_places=2)
+
+
+def test_decimal():
+    class GoodDecimal(core.Schema):
+        num = core.DecimalField(max_digits=3, decimal_places=2)
+
+        class Meta:
+            root = 'decimal'
+
+    d = GoodDecimal(num=123.5)
+    assert unicode(d) == u'<decimal>123.50</decimal>'
+
+
+@raises(core.ValidationError)
+def test_missing_fields():
+    class GoodSchema(core.Schema):
+        req = core.IntegerField('reqired')
+
+        class Meta:
+            root = 'doc'
+
+    badvalue = GoodSchema()
+    str(badvalue)
+
+
+@raises(core.ValidationError)
+def test_max_occurs():
+    class GoodSchema(core.Schema):
+        limited = core.IntegerField('reqired', maxOccurs=10)
+
+        class Meta:
+            root = 'doc'
+
+    badvalue = GoodSchema(limited=list(range(11)))
+    str(badvalue)
+
+
+@raises(core.ValidationError)
+def test_min_occurs():
+    class GoodSchema(core.Schema):
+        limited = core.IntegerField('reqired', maxOccurs=10, minOccurs=3)
+
+        class Meta:
+            root = 'doc'
+
+    badvalue = GoodSchema(limited=list(range(2)))
+    str(badvalue)
+
+
+@raises(core.ValidationError)
+def test_decimal_valid():
+    class GoodDecimal(core.Schema):
+        num = core.DecimalField(max_digits=3, decimal_places=2)
+
+        class Meta:
+            root = 'decimal'
+
+    GoodDecimal.load(u'<decimal>abcdef</decimal>')
+
+
+@raises(core.ValidationError)
+def test_missing_element():
+    class GoodSchema(core.Schema):
+        num = core.ComplexField('num', val=core.IntegerField())
+
+        class Meta:
+            root = 'item'
+
+    GoodSchema.load(u'<item></item>')
+
+
+@raises(core.ValidationError)
+def test_non_empty():
+    class GoodSchema(core.Schema):
+        empty = core.ComplexField('empty')
+
+        class Meta:
+            root = 'item'
+
+    GoodSchema.load(u'<item><empty>1</empty></item>')
 
 
 @raises(ValueError)

@@ -20,11 +20,10 @@ class DefinitionError(XML_ORM_Error):
     pass
 
 
-class SerializationError(XML_ORM_Error):
+class ValidationError(XML_ORM_Error):
     pass
 
-
-class ValidationError(XML_ORM_Error):
+class SerializationError(XML_ORM_Error):
     pass
 
 
@@ -34,6 +33,29 @@ class _SortedEntry(object):
     def __init__(self):
         self.sort_weight = _SortedEntry.n
         _SortedEntry.n += 1
+
+
+def _iterate(root):
+    if root.text is not None:
+        yield root.text
+    for e in root:
+        yield e
+        if e.tail is not None:
+            yield e.tail
+
+
+class _Stack(list):
+    def __init__(self, root):
+        self.__attrs = dict(root.attrib)
+        super(_Stack, self).__init__(_iterate(root))
+
+    def take(self, fun, maxlen):
+        res = []
+
+        
+
+    def get(self, *args, **nargs):
+        return self.__attrs.get(*args, **nargs)
 
 
 class SimpleField(_SortedEntry):
@@ -84,6 +106,13 @@ class SimpleField(_SortedEntry):
     def to_python(self, value):
         return value
 
+    def check_default(self, value):
+        if value is not None and value != []:
+            return value
+        if self.has_default:
+            return self.default
+        return None
+
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
 
@@ -99,8 +128,24 @@ class SimpleField(_SortedEntry):
     def to_string(self, val):
         return unicode(val)
 
-    def load(self, root, ns):
-        return self.to_python(root.text)
+    def load(self, stack, ns):
+        if self.is_attribute:
+            val = self.check_default(stack.get(self.qname(ns), None))
+            if val is None:
+                raise ValidationError(u'Required attribute "{0}" missing'
+                                        .format(self.tag))
+            return self.to_python(val)
+
+        if self.tag is None:
+            val = stack.gimme(basestring, '')
+            return self.to_python(val)
+
+        val = self.check_default(stack.take(self.qname(ns), self.maxOccurs))
+        if val is None:
+            raise ValidationError(u'Required element "{0}" missing'
+                                    .format(self.tag))
+
+
 
     def xml(self, value, ns=None):
         val = self.to_string(value)
@@ -117,7 +162,7 @@ class SimpleField(_SortedEntry):
             return res
 
     def check_len(self, val):
-        res = len(val)
+        res = len(val) if isinstance(val, list) else 1
         if res < self.minOccurs:
             raise SerializationError(u'not enough values of field "{0}"'.format(self.name))
         if self.maxOccurs != 'unbounded' and res > self.maxOccurs:
@@ -424,26 +469,9 @@ class Schema(object):
             raise ValidationError(u'Unexpected element "{0}"'
                                   .format(etree.QName(root)))
         new_elt = cls()
-        n = 0
+        stack = _Stack(root)
         for field in new_elt._fields:
-            if field.tag is None:
-                setattr(new_elt, field.name, field.to_python(root[n - 1].tail if n else root.text))
-            elif field.is_attribute:
-                val = root.get(field.qname(ns), None)
-                if (field.minOccurs != 0 and val is None and not field.has_default):
-                    raise ValidationError(u'Required attribute {0} missing'
-                                          .format(field.name))
-                val = field.default if val is None and field.has_default else val
-                setattr(new_elt, field.name, field.to_python(val))
-            else:
-                res = []
-                while n < len(root):
-                    if field.qname(ns) != etree.QName(root[n]):
-                        break
-                    res.append(field.load(root[n], ns))
-                    n += 1
-                if field.check_len(res):
-                    setattr(new_elt, field.name, res if field.maxOccurs != 1 else res[0])
+            setattr(new_elt, field.name, field.load(ns, stack))
         return new_elt
 
     def xml(self, ns=None):
@@ -454,8 +482,8 @@ class Schema(object):
         for field in self._fields:
             value = getattr(self, field.name, None)
             if field.minOccurs != 0 and value is None:
-                raise SerializationError(u'Required field "{0}" not assigned'
-                                         .format(field.name))
+                raise ValidationError(u'Required field "{0}" not assigned'
+                                      .format(field.name))
             if value is None:
                 continue
             if isinstance(value, list):
