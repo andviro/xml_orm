@@ -89,11 +89,11 @@ def test_nested():
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
-    print d
-    assert False
+    #print d
+    #assert False
 
 
-@raises(AssertionError)
+@raises(ValueError)
 def test_max_length():
     d = Document(uid=1, abzats='text', name='a' * 256)
     str(d)
