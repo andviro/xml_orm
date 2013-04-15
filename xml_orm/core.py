@@ -12,6 +12,22 @@ from cStringIO import StringIO
 import decimal
 
 
+class XML_ORM_Error(Exception):
+    pass
+
+
+class DefinitionError(XML_ORM_Error):
+    pass
+
+
+class SerializationError(XML_ORM_Error):
+    pass
+
+
+class ValidationError(XML_ORM_Error):
+    pass
+
+
 class _SortedEntry(object):
     n = 0L
 
@@ -50,7 +66,8 @@ class SimpleField(_SortedEntry):
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
-        assert maxOccurs, u"maxOccurs can't be 0"
+        if maxOccurs == 0:
+            raise DefinitionError(u"maxOccurs can't be 0")
         self.maxOccurs = maxOccurs
         self.insert_after = insert_after
         self.insert_before = insert_before
@@ -101,9 +118,10 @@ class SimpleField(_SortedEntry):
 
     def check_len(self, val):
         res = len(val)
-        assert res >= self.minOccurs, u'not enough values of field {0}'.format(self.name)
-        if self.maxOccurs != 'unbounded':
-            assert res <= self.maxOccurs, u'too many values of field {0}'.format(self.name)
+        if res < self.minOccurs:
+            raise SerializationError(u'not enough values of field "{0}"'.format(self.name))
+        if self.maxOccurs != 'unbounded' and res > self.maxOccurs:
+            raise SerializationError(u'too many values of field "{0}"'.format(self.name))
         return res
 
 
@@ -142,17 +160,22 @@ class CharField(SimpleField):
 
         """
         max_length = kwargs.pop('max_length', None)
-        assert max_length is not None, u'CharField requires max_length'
+        if max_length is None:
+            raise DefinitionError(u'CharField requires max_length')
         self.max_length = max_length
         super(CharField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
-        assert len(value) <= self.max_length, u'String too long for CharField'
+        if len(value) > self.max_length:
+            raise ValidationError(u'String too long for CharField "{0}"'
+                                  .format(self.name))
         return value
 
     def to_string(self, val):
         s = unicode(val)
-        assert len(s) <= self.max_length, u'String too long for CharField'
+        if len(s) > self.max_length:
+            raise ValueError(u'String too long for CharField "{0}"'
+                             .format(self.name))
         return s
 
 
@@ -208,17 +231,24 @@ class DecimalField(SimpleField):
 
         """
         max_digits = kwargs.pop('max_digits', None)
-        assert max_digits is not None, u'required argument max_digits missing'
+        if max_digits is None:
+            raise DefinitionError(u'DecimalField requires max_digits')
         self.max_digits = max_digits
 
         decimal_places = kwargs.pop('decimal_places', None)
-        assert decimal_places is not None, u'required argument decimal_places missing'
+        if decimal_places is None:
+            raise DefinitionError(u'DecimalField requires decimal_places')
         self.decimal_places = decimal_places
 
         super(DecimalField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
-        return decimal.Decimal(value)
+        try:
+            return decimal.Decimal(value)
+        except decimal.InvalidOperation as e:
+            raise ValidationError(e)
+        except:
+            raise
 
     def to_string(self, val):
         if isinstance(val, decimal.Decimal):
@@ -254,7 +284,6 @@ class ComplexField(SimpleField):
                     newargs[k] = v
             kwargs = newargs
             fields['Meta'] = type('Meta', (object,), {'root': cls})
-            print dir(fields['Meta'])
             self.cls = type(cls, (Schema,), fields)
         super(ComplexField, self).__init__(self.cls._meta.root, *args, **kwargs)
 
@@ -302,7 +331,8 @@ class _MetaSchema(type):
 
         """
         parents = [b for b in bases if isinstance(b, _MetaSchema)]
-        assert len(parents) <= 1, u'Only one parent container type allowed'
+        if len(parents) > 1:
+            raise DefinitionError(u'Only one parent schema allowed')
         new_sup = super(_MetaSchema, cls).__new__
         new_cls = new_sup(cls, name, bases, {})
 
@@ -390,7 +420,9 @@ class Schema(object):
         else:
             ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace)
         qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
-        assert etree.QName(root) == qn, u'load: invalid xml tree root'
+        if etree.QName(root) != qn:
+            raise ValidationError(u'Unexpected element "{0}"'
+                                  .format(etree.QName(root)))
         new_elt = cls()
         n = 0
         for field in new_elt._fields:
@@ -398,8 +430,9 @@ class Schema(object):
                 setattr(new_elt, field.name, field.to_python(root[n - 1].tail if n else root.text))
             elif field.is_attribute:
                 val = root.get(field.qname(ns), None)
-                assert (field.minOccurs == 0 or val is not None or field.has_default
-                        ), u'required attribute {0} missing'.format(field.name)
+                if (field.minOccurs != 0 and val is None and not field.has_default):
+                    raise ValidationError(u'Required attribute {0} missing'
+                                          .format(field.name))
                 val = field.default if val is None and field.has_default else val
                 setattr(new_elt, field.name, field.to_python(val))
             else:
@@ -420,8 +453,9 @@ class Schema(object):
         prev_elt = None
         for field in self._fields:
             value = getattr(self, field.name, None)
-            assert field.minOccurs == 0 or value is not None, u'required field {0} not assigned'.format(
-                field.name)
+            if field.minOccurs != 0 and value is None:
+                raise SerializationError(u'Required field "{0}" not assigned'
+                                         .format(field.name))
             if value is None:
                 continue
             if isinstance(value, list):
