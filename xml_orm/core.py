@@ -10,7 +10,6 @@ from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
 from cStringIO import StringIO
 import decimal
-from datetime import date, time, datetime
 
 
 class _SortedEntry(object):
@@ -242,10 +241,22 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        self.cls = cls
         use_schema_ns = kwargs.pop('use_schema_ns', False)
         self.use_schema_ns = use_schema_ns
-        super(ComplexField, self).__init__(cls._meta.root, *args, **kwargs)
+        if isinstance(cls, _MetaSchema):
+            self.cls = cls
+        else:
+            fields, newargs = {}, {}
+            for k, v in kwargs.items():
+                if isinstance(v, SimpleField):
+                    fields[k] = v
+                else:
+                    newargs[k] = v
+            kwargs = newargs
+            fields['Meta'] = type('Meta', (object,), {'root': cls})
+            print dir(fields['Meta'])
+            self.cls = type(cls, (Schema,), fields)
+        super(ComplexField, self).__init__(self.cls._meta.root, *args, **kwargs)
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls

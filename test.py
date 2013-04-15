@@ -70,6 +70,29 @@ def test_all_fields():
     assert unicode(a) == unicode(b)
 
 
+def test_nested():
+    class Doc(core.Schema):
+        author = core.CharField('author', max_length=100)
+        chapter = core.ComplexField(
+            'chapter',
+            title=core.SimpleField('title'),
+            p=core.SimpleField('p', maxOccurs='unbounded'),
+            minOccurs=0,
+            maxOccurs='unbounded',)
+
+        class Meta:
+            root = 'doc'
+            pretty_print = True
+
+    d = Doc(author='Ivan Petrov')
+    for i in range(1, 4):
+        d.chapter.append(
+            d.Chapter(title='Chapter {0}'.format(i),
+                      p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    print d
+    assert False
+
+
 @raises(AssertionError)
 def test_max_length():
     d = Document(uid=1, abzats='text', name='a' * 256)
