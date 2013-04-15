@@ -10,6 +10,7 @@ from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
 from cStringIO import StringIO
 import decimal
+from datetime import date, time, datetime
 
 
 class _SortedEntry(object):
@@ -166,6 +167,18 @@ class FloatField(SimpleField):
 
     def to_string(self, val):
         return unicode(float(val))
+
+
+class DateField(SimpleField):
+    u'''Принимает объект типа datetime.date
+
+    '''
+
+    def to_python(self, value):
+        return float(value)
+
+    def to_string(self, val):
+        return unicode(val.isoformat())
 
 
 class IntegerField(SimpleField):
