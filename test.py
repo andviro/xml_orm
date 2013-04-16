@@ -90,6 +90,23 @@ def test_nested():
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    d2 = Doc.load(str(d))
+    assert str(d2) == str(d)
+
+
+def test_interleaved_text():
+    class InterleavedText(core.Schema):
+        text1 = core.IntegerField()
+        elt1 = core.CharField('elt', max_length=1)
+        text2 = core.IntegerField()
+        elt2 = core.CharField('elt', max_length=1)
+
+        class Meta:
+            root = 'inter'
+            pretty_print = True
+
+    it = InterleavedText(text1='1', elt1='a', text2='2', elt2='b')
+    assert unicode(it).strip() == u'<inter>1<elt>a</elt>2<elt>b</elt></inter>'
 
 
 @raises(core.DefinitionError)
