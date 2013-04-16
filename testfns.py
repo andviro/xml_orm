@@ -17,8 +17,7 @@ def setup_module():
     # для непереданных полей присваиваются значения по умолчанию
     # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
     # .save() или преобразовать контейнер в XML.
-    ti = ContainerFNS(uid=uuid4().hex)
-    with ti:
+    with ContainerFNS(uid=uuid4().hex) as ti:
         # сохранение сработает, только если контейнер сформирован корректно
         ti.sender = ContainerFNS.Sender(uid=uuid4().hex)
         ti.receiver = ti.Receiver(uid=uuid4().hex)
