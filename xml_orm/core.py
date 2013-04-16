@@ -23,6 +23,7 @@ class DefinitionError(XML_ORM_Error):
 class ValidationError(XML_ORM_Error):
     pass
 
+
 class SerializationError(XML_ORM_Error):
     pass
 
@@ -36,12 +37,12 @@ class _SortedEntry(object):
 
 
 def _iterate(root):
-    if root.text is not None:
-        yield root.text
+    if root.text is not None and root.text.strip():
+        yield root.text.strip()
     for e in root:
         yield e
-        if e.tail is not None:
-            yield e.tail
+        if e.tail is not None and e.tail.strip():
+            yield e.tail.strip()
 
 
 class _Stack(list):
@@ -49,10 +50,16 @@ class _Stack(list):
         self.__attrs = dict(root.attrib)
         super(_Stack, self).__init__(_iterate(root))
 
-    def take(self, fun, maxlen):
+    def take_while(self, fun, maxlen):
         res = []
-
-        
+        if maxlen == 'unbounded':
+            maxlen = len(self)
+        for x in self[:maxlen]:
+            if fun(x):
+                res.append(self.pop(0))
+            else:
+                break
+        return res
 
     def get(self, *args, **nargs):
         return self.__attrs.get(*args, **nargs)
@@ -106,13 +113,6 @@ class SimpleField(_SortedEntry):
     def to_python(self, value):
         return value
 
-    def check_default(self, value):
-        if value is not None and value != []:
-            return value
-        if self.has_default:
-            return self.default
-        return None
-
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
 
@@ -128,24 +128,52 @@ class SimpleField(_SortedEntry):
     def to_string(self, val):
         return unicode(val)
 
-    def load(self, stack, ns):
+    def load(self, *args, **nargs):
         if self.is_attribute:
-            val = self.check_default(stack.get(self.qname(ns), None))
-            if val is None:
-                raise ValidationError(u'Required attribute "{0}" missing'
-                                        .format(self.tag))
-            return self.to_python(val)
+            val = self._load_attrib(*args, **nargs)
+        elif self.tag is None:
+            val = self._load_text(*args, **nargs)
+        else:
+            val = self._load_element(*args, **nargs)
+        return val
 
-        if self.tag is None:
-            val = stack.gimme(basestring, '')
-            return self.to_python(val)
+    def _load_attrib(self, stack, ns):
+        """@todo: Docstring for _load_attrib
 
-        val = self.check_default(stack.take(self.qname(ns), self.maxOccurs))
-        if val is None:
-            raise ValidationError(u'Required element "{0}" missing'
-                                    .format(self.tag))
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
 
+        """
+        val = stack.get(self.qname(ns), None)
+        if val is not None and self.maxOccurs != 1:
+            return val.split()
+        return [] if val is None else [val]
 
+    def _load_text(self, stack, ns):
+        """@todo: Docstring for _load_text
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        return stack.take_while(lambda x: isinstance(x, basestring), 1)
+
+    def _load_element(self, stack, ns):
+        """@todo: Docstring for _load_element
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        qn = self.qname(ns)
+        return [x.text or "" for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
+                                                       self.maxOccurs)]
 
     def xml(self, value, ns=None):
         val = self.to_string(value)
@@ -162,18 +190,14 @@ class SimpleField(_SortedEntry):
             return res
 
     def check_len(self, val):
-        res = len(val) if isinstance(val, list) else 1
-        if res < self.minOccurs:
-            raise SerializationError(u'not enough values of field "{0}"'.format(self.name))
-        if self.maxOccurs != 'unbounded' and res > self.maxOccurs:
-            raise SerializationError(u'too many values of field "{0}"'.format(self.name))
-        return res
+        return ((self.has_default or len(val) >= self.minOccurs) and
+                (self.maxOccurs == 'unbounded' or len(val) <= self.maxOccurs))
 
 
 class RawField(SimpleField):
     """Docstring for RawField """
 
-    def load(self, root, ns):
+    def to_python(self, root):
         return root
 
     def xml(self, value, ns):
@@ -316,8 +340,6 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        use_schema_ns = kwargs.pop('use_schema_ns', False)
-        self.use_schema_ns = use_schema_ns
         if isinstance(cls, _MetaSchema):
             self.cls = cls
         else:
@@ -343,19 +365,29 @@ class ComplexField(SimpleField):
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(self.cls))
 
-    def xml(self, val, ns=None):
-        if not self.use_schema_ns:
-            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
+    def xml(self, val):
+        ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return val.xml(ns=ns)
 
-    def load(self, root, ns=None):
-        if not self.use_schema_ns:
-            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
+    def to_python(self, root):
+        ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return self.cls.load(root, ns)
 
+    def _load_element(self, stack, ns):
+        """@todo: Docstring for _load_element
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        qn = self.qname(ns)
+        return stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
+                                self.maxOccurs)
+
     def qname(self, ns=None):
-        if not self.use_schema_ns:
-            ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
+        ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
 
 
@@ -471,7 +503,25 @@ class Schema(object):
         new_elt = cls()
         stack = _Stack(root)
         for field in new_elt._fields:
-            setattr(new_elt, field.name, field.load(ns, stack))
+            val = field.load(stack, ns)
+            if not(val) and field.has_default:
+                res = field.default
+            else:
+                res = [field.to_python(x) for x in val]
+
+            if field.minOccurs > len(res):
+                raise ValidationError(u'Too few values for field "{0}"'
+                                      .format(field.name))
+            elif field.maxOccurs != 'unbounded' and len(val) > field.maxOccurs:
+                raise ValidationError(u'Too many values for field "{0}"'
+                                      .format(field.name))
+            if field.maxOccurs != 1:
+                setattr(new_elt, field.name, res)
+            elif len(res):
+                setattr(new_elt, field.name, res[0])
+        if len(stack):
+            raise ValidationError(u'Unexpected {0} nodes after last field'
+                                  .format(len(stack)))
         return new_elt
 
     def xml(self, ns=None):
@@ -480,30 +530,31 @@ class Schema(object):
         root = etree.Element(self._meta.root, nsmap=nsmap)
         prev_elt = None
         for field in self._fields:
-            value = getattr(self, field.name, None)
-            if field.minOccurs != 0 and value is None:
-                raise ValidationError(u'Required field "{0}" not assigned'
-                                      .format(field.name))
-            if value is None:
-                continue
+            if not hasattr(self, field.name):
+                if field.minOccurs != 0:
+                    raise ValidationError(u'Required field "{0}" not assigned'
+                                          .format(field.name))
+                else:
+                    continue
+            value = getattr(self, field.name)
             if isinstance(value, list):
-                field.check_len(value)
-                value = [field.xml(v, ns) for v in value]
+                if not field.check_len(value):
+                    raise SerializationError(u'Invalid list size {0} for field "{1}"'
+                                             .format(len(value), field.name))
+                value = [field.xml(v) for v in value]
             else:
-                value = field.xml(value, ns)
+                value = [field.xml(value)]
+
             if field.tag is None:
                 if prev_elt is None:
-                    root.text = value
+                    root.text = ' '.join(value)
                 else:
-                    prev_elt.tail = value
+                    prev_elt.tail = ' '.join(value)
             elif field.is_attribute:
-                root.set(field.qname(ns), ' '.join(value) if isinstance(value, list) else value)
+                root.set(field.qname(ns), ' '.join(value))
             else:
-                prev_elt = value
-                if isinstance(value, list):
-                    root.extend(value)
-                else:
-                    root.append(value)
+                prev_elt = value[-1]
+                root.extend(value)
         return root
 
     def __unicode__(self):

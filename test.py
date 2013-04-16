@@ -36,9 +36,8 @@ class Signature(core.Schema):
 class Book(core.Schema):
     uid = core.CharField(u'@ИД', max_length=32)
     auth = core.ComplexField(Author)
-    doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded',
-                            use_schema_ns=False)
-    signer = core.ComplexField(Signature, minOccurs=0, use_schema_ns=True)
+    doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    signer = core.ComplexField(Signature, minOccurs=0)
     price = core.DecimalField(u'Цена', decimal_places=2, max_digits=10)
 
     class Meta:
@@ -66,7 +65,9 @@ def test_all_fields():
     a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
     a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
+    print unicode(a)
     b = Article.load(str(a))
+    print unicode(b)
     assert unicode(a) == unicode(b)
 
 
@@ -150,7 +151,7 @@ def test_missing_fields():
     str(badvalue)
 
 
-@raises(core.ValidationError)
+@raises(core.SerializationError)
 def test_max_occurs():
     class GoodSchema(core.Schema):
         limited = core.IntegerField('reqired', maxOccurs=10)
@@ -162,7 +163,7 @@ def test_max_occurs():
     str(badvalue)
 
 
-@raises(core.ValidationError)
+@raises(core.SerializationError)
 def test_min_occurs():
     class GoodSchema(core.Schema):
         limited = core.IntegerField('reqired', maxOccurs=10, minOccurs=3)

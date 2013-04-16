@@ -17,7 +17,8 @@ def setup_module():
     # для непереданных полей присваиваются значения по умолчанию
     # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
     # .save() или преобразовать контейнер в XML.
-    with ContainerFNS(uid=uuid4().hex) as ti:
+    ti = ContainerFNS(uid=uuid4().hex)
+    with ti:
         # сохранение сработает, только если контейнер сформирован корректно
         ti.sender = ContainerFNS.Sender(uid=uuid4().hex)
         ti.receiver = ti.Receiver(uid=uuid4().hex)
@@ -28,7 +29,6 @@ def setup_module():
                 uid=uid,
                 orig_filename=uid + '.xml',
                 content=ti.Doc.Content(filename=(uid + '.bin')))
-            print unicode(doc)
             # Добавление дескриптора документа к дескриптору контейнера
             ti.doc.append(doc)
             # Добавление собственно файла к содержимому контейнера
