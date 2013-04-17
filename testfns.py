@@ -24,10 +24,7 @@ def setup_module():
         ti.sos = ti.Sos(uid=u'2AE')
         for n in range(3):
             uid = uuid4().hex
-            doc = ti.Doc(
-                uid=uid,
-                orig_filename=uid + '.xml',
-                content=ti.Doc.Content(filename=(uid + '.bin')))
+            doc = ti.Doc(orig_filename=uid + '.xml')
             # Добавление дескриптора документа к дескриптору контейнера
             ti.doc.append(doc)
             # Добавление собственно файла к содержимому контейнера

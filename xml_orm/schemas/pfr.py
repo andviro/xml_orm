@@ -54,6 +54,15 @@ class PFRDocument(core.Schema):
     class Meta:
         root = u'документ'
 
+    def __init__(self, *args, **nargs):
+        u''' Инициализация полей, которые не загружаются/сохраняются из
+        контейнера. В частности поле file_uid используется только для вновь
+        созданных контейнеров при формировании имени архива.
+        '''
+        super(PFRDocument, self).__init__(*args, **nargs)
+        self.uid = uuid4().hex
+        self.content = self.Content(filename='{0}.bin'.format(self.uid))
+
 
 class SKZI(core.Schema):
     u"""Дескриптор документа.

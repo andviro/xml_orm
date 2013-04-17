@@ -84,6 +84,15 @@ class Document(core.Schema):
     # подписи, представляются в виде списка элементов типа Signature
     signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
 
+    def __init__(self, *args, **nargs):
+        u''' Инициализация полей, которые не загружаются/сохраняются из
+        контейнера. В частности поле file_uid используется только для вновь
+        созданных контейнеров при формировании имени архива.
+        '''
+        super(Document, self).__init__(*args, **nargs)
+        self.uid = uuid4().hex
+        self.content = self.Content(filename=u'{0}.bin'.format(self.uid))
+
     class Meta:
         root = u'документ'
 
