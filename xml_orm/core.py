@@ -73,6 +73,8 @@ class SimpleField(_SortedEntry):
                  qualify=None,
                  getter=None,
                  setter=None,
+                 is_attribute=None,
+                 is_text=False,
                  insert_before=None,
                  insert_after=None, **kwargs):
         """@todo: Docstring for __init__
@@ -84,19 +86,28 @@ class SimpleField(_SortedEntry):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
-        self.is_attribute = False
-        if tag:
-            self.is_attribute = tag.startswith('@')
-            self.tag = tag[1:] if self.is_attribute else self.tag
+        self.is_attribute = is_attribute
+        self.is_text = is_text
+        if self.tag is not None and self.is_text:
+            raise DefinitionError(u"Text stored field can't have tag name")
+
+        if tag and tag.startswith('@'):
+            if self.is_attribute is None:
+                self.is_attribute = True
+            elif not self.is_attribute:
+                raise DefinitionError(u"Field tag contradicts with is_attribute parameter")
+            self.tag = tag[1:]
+
         if self.is_attribute:
             self.qualify = qualify is not None and qualify
         else:
             self.qualify = qualify is None or qualify
+
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
         if maxOccurs == 0:
-            raise DefinitionError(u"maxOccurs can't be 0")
+            raise DefinitionError(u"Field maxOccurs can't be 0")
         self.maxOccurs = maxOccurs
         self.insert_after = insert_after
         self.insert_before = insert_before
@@ -123,6 +134,7 @@ class SimpleField(_SortedEntry):
         """
         self.schema = cls
         self.name = name
+        self.tag = self.tag or name
         cls._fields.append(self)
 
     def to_string(self, val):
@@ -131,7 +143,7 @@ class SimpleField(_SortedEntry):
     def load(self, *args, **nargs):
         if self.is_attribute:
             val = self._load_attrib(*args, **nargs)
-        elif self.tag is None:
+        elif self.is_text:
             val = self._load_text(*args, **nargs)
         else:
             val = self._load_element(*args, **nargs)
@@ -177,7 +189,7 @@ class SimpleField(_SortedEntry):
 
     def xml(self, value, ns=None):
         val = self.to_string(value)
-        if self.tag is None or self.is_attribute:
+        if self.is_text or self.is_attribute:
             return val
         else:
             if self.qualify:
@@ -331,7 +343,7 @@ class DecimalField(SimpleField):
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
-    def __init__(self, cls, *args, **kwargs):
+    def __init__(self, cls=None, *args, **kwargs):
         """@todo: to be defined
 
         :name: @todo
@@ -340,19 +352,14 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        if isinstance(cls, _MetaSchema):
-            self.cls = cls
-        else:
-            fields, newargs = {}, {}
-            for k, v in kwargs.items():
-                if isinstance(v, SimpleField):
-                    fields[k] = v
-                else:
-                    newargs[k] = v
-            kwargs = newargs
-            fields['Meta'] = type('Meta', (object,), {'root': cls})
-            self.cls = type(cls, (Schema,), fields)
-        super(ComplexField, self).__init__(self.cls._meta.root, *args, **kwargs)
+        self.cls = cls
+        self._fields, newargs = {}, {}
+        for k, v in kwargs.items():
+            if isinstance(v, SimpleField):
+                self._fields[k] = v
+            else:
+                newargs[k] = v
+        super(ComplexField, self).__init__(None, *args, **newargs)
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -362,6 +369,14 @@ class ComplexField(SimpleField):
         :returns: @todo
 
         """
+        if self.cls is None:
+            self.cls = name
+
+        if isinstance(self.cls, basestring):
+            self._fields['Meta'] = type('Meta', (object,), {'root': self.cls})
+            self.cls = type(self.cls, (Schema,), self._fields)
+        self.tag = getattr(self.cls._meta, 'root', None)
+
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(self.cls))
 
@@ -463,6 +478,8 @@ class Schema(object):
         :returns: @todo
 
         """
+        if not hasattr(self._meta, 'root'):
+            setattr(self._meta, 'root', self.__class__.__name__)
         for field in self._fields:
             value = None
             if field.name in kwargs:
@@ -545,7 +562,7 @@ class Schema(object):
             else:
                 value = [field.xml(value)]
 
-            if field.tag is None:
+            if field.is_text:
                 if prev_elt is None:
                     root.text = ' '.join(value)
                 else:

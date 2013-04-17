@@ -5,7 +5,7 @@ from nose.tools import raises
 
 class Document(core.Schema):
     uid = core.IntegerField(u'ИД')
-    abzats = core.SimpleField(minOccurs=0)
+    abzats = core.SimpleField(is_text=1, minOccurs=0)
     name = core.CharField(u'ИмяФайла', max_length=255)
 
     class Meta:
@@ -26,7 +26,7 @@ class Author(core.Schema):
 class Signature(core.Schema):
     uid = core.CharField(u'@ИД', max_length=32, qualify=True)
     probability = core.FloatField(u'Вероятность')
-    surname = core.SimpleField()
+    surname = core.SimpleField(is_text=1)
 
     class Meta:
         root = u'Подпись'
@@ -55,7 +55,7 @@ class Article(Book):
         root = u'Статья'
         namespace = u'http://www.example.com/ns1'
         encoding = u'utf-8'
-        pretty_print = False
+        pretty_print = True
 
 
 def test_all_fields():
@@ -65,10 +65,27 @@ def test_all_fields():
     a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
     a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
-    print unicode(a)
-    b = Article.load(str(a))
-    print unicode(b)
-    assert unicode(a) == unicode(b)
+    test_xml = u'''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
+  <Издательство>Мурзилка</Издательство>
+  <Author>Иван</Author>
+  <ИД>1</ИД>
+  <Документ xmlns:t="http://www.example.com/ns2" xmlns="http://www.example.com/ns2"><ИД>1</ИД>абзац<ИмяФайла>xxx</ИмяФайла></Документ>
+  <Документ xmlns:t="http://www.example.com/ns2" xmlns="http://www.example.com/ns2">
+    <ИД>2</ИД>
+    <ИмяФайла>yyy</ИмяФайла>
+  </Документ>
+  <Подпись xmlns:t="http://www.example.com/signature"
+    xmlns="http://www.example.com/signature"
+    t:ИД="100">
+    <Вероятность>0.4</Вероятность>
+    Большой начальник
+  </Подпись>
+  <Цена>1.30</Цена>
+</Статья>
+    '''
+    b = Article.load(test_xml)
+    c = Article.load(str(a))
+    assert unicode(a) == unicode(b) == unicode(c)
 
 
 def test_nested():
@@ -96,9 +113,9 @@ def test_nested():
 
 def test_interleaved_text():
     class InterleavedText(core.Schema):
-        text1 = core.IntegerField()
+        text1 = core.IntegerField(is_text=1)
         elt1 = core.CharField('elt', max_length=1)
-        text2 = core.IntegerField()
+        text2 = core.IntegerField(is_text=1)
         elt2 = core.CharField('elt', max_length=1)
 
         class Meta:
@@ -147,7 +164,7 @@ def test_bad_max_digits():
 
 def test_decimal():
     class GoodDecimal(core.Schema):
-        num = core.DecimalField(max_digits=3, decimal_places=2)
+        num = core.DecimalField(is_text=1, max_digits=3, decimal_places=2)
 
         class Meta:
             root = 'decimal'
@@ -264,3 +281,32 @@ def test_bool():
                surname='python',
                is_poet=False)
     assert u'false' in unicode(a)
+
+
+def test_new_syntax():
+    class newsch(core.Schema):
+        f1 = core.SimpleField(default='f1')
+        f2 = core.ComplexField(
+            f1=core.ComplexField(
+                f1=core.SimpleField(default="f2.f1.f1"),
+                f2=core.SimpleField(default="f2.f1.f2")),
+            f2=core.SimpleField(default="f2.f2"),)
+
+        class Meta:
+            pretty_print = 1
+
+    a = newsch(f2=newsch.F2(f1=newsch.F2.F1()))
+    b = newsch.load('''
+<newsch>
+  <f1>f1</f1>
+  <f2>
+    <f1>
+      <f1>f2.f1.f1</f1>
+      <f2>f2.f1.f2</f2>
+    </f1>
+    <f2>f2.f2</f2>
+  </f2>
+</newsch>
+    ''')
+    c = newsch.load(str(a))
+    assert unicode(a) == unicode(b) == unicode(c)
