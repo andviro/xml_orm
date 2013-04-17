@@ -553,7 +553,7 @@ class Schema(object):
             elif field.is_attribute:
                 root.set(field.qname(ns), ' '.join(value))
             else:
-                prev_elt = value[-1]
+                prev_elt = value[-1] if len(value) else prev_elt
                 root.extend(value)
         return root
 
