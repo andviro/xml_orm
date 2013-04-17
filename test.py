@@ -203,6 +203,22 @@ def test_decimal_valid():
     GoodDecimal.load(u'<decimal>abcdef</decimal>')
 
 
+def test_empty_list():
+    class Cont(core.Schema):
+        optional = core.ComplexField(
+            'opt',
+            minOccurs=0,
+            maxOccurs='unbounded',
+
+            att=core.SimpleField('@att', minOccurs=0))
+
+        class Meta:
+            root = 'containter'
+
+    c = Cont()
+    str(c)
+
+
 @raises(core.ValidationError)
 def test_missing_element():
     class GoodSchema(core.Schema):
