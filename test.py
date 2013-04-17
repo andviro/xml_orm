@@ -296,15 +296,11 @@ def test_new_syntax():
             pretty_print = 1
 
     a = newsch(f2=newsch.F2(f1=newsch.F2.F1()))
+    print unicode(a)
     b = newsch.load('''
-<newsch>
-  <f1>f1</f1>
-  <f2>
-    <f1>
-      <f1>f2.f1.f1</f1>
-      <f2>f2.f1.f2</f2>
-    </f1>
-    <f2>f2.f2</f2>
+<newsch f1="f1">
+  <f2 xmlns="" f2="f2.f2">
+    <f1 f1="f2.f1.f1" f2="f2.f1.f2"/>
   </f2>
 </newsch>
     ''')

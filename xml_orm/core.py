@@ -86,8 +86,13 @@ class SimpleField(_SortedEntry):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
+        if is_attribute and is_text:
+            raise DefinitionError(u"Field can't be both attribute and text data")
+
         self.is_attribute = is_attribute
+
         self.is_text = is_text
+
         if self.tag is not None and self.is_text:
             raise DefinitionError(u"Text stored field can't have tag name")
 
@@ -97,6 +102,11 @@ class SimpleField(_SortedEntry):
             elif not self.is_attribute:
                 raise DefinitionError(u"Field tag contradicts with is_attribute parameter")
             self.tag = tag[1:]
+
+        self.is_attribute = (tag is None
+                             and self.is_attribute is None
+                             and not self.is_text
+                             or self.is_attribute)
 
         if self.is_attribute:
             self.qualify = qualify is not None and qualify
@@ -196,7 +206,9 @@ class SimpleField(_SortedEntry):
                 ns = getattr(self.schema._meta, 'namespace', None) if ns is None else ns
             else:
                 ns = ''
-            nsmap = {None: ns, u't': ns} if ns is not None else None
+            nsmap = {None: ns} if ns is not None else None
+            if ns:
+                nsmap['t'] = ns
             res = etree.Element(self.tag, nsmap=nsmap)
             res.text = val
             return res
@@ -352,6 +364,10 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
+        if 'is_attribute' in kwargs or 'is_text' in kwargs:
+            if kwargs['is_attribute'] or kwargs['is_text']:
+                raise DefinitionError(u"ComplexField can't be text or attribute")
+
         self.cls = cls
         self._fields, newargs = {}, {}
         for k, v in kwargs.items():
@@ -360,6 +376,9 @@ class ComplexField(SimpleField):
             else:
                 newargs[k] = v
         super(ComplexField, self).__init__(None, *args, **newargs)
+        q = newargs.get('qualify', None)
+        self.qualify = q is None or q
+        self.is_attribute = self.is_text = False
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -543,7 +562,9 @@ class Schema(object):
 
     def xml(self, ns=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
-        nsmap = {None: ns, u't': ns} if ns is not None else None
+        nsmap = {None: ns} if ns is not None else None
+        if ns:
+            nsmap['t'] = ns
         root = etree.Element(self._meta.root, nsmap=nsmap)
         prev_elt = None
         for field in self._fields:
