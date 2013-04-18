@@ -1,34 +1,45 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-
 from .. import core
 from .fns import Content, Signature
 from uuid import uuid4
 
-_doc_types = {
-    u'письмоРеспондент': (1, [
-        (u'письмо', 1),
-        (u'извещение', 2),
-    ]),
-    u'письмоОрганФСГС': (2, [
-        (u'письмо', 1),
-        (u'подтверждение', 2),
-        (u'извещение', 3),
-    ]),
-    u'рассылка': (3, [
-        (u'рассылка', 1),
-        (u'подтверждение', 2),
-    ]),
-    u'отчетСтат': (4, [
-        (u'отчет', 1),
-        (u'отчетИзвещение', 2),
-        (u'протокол', 3),
-        (u'протоколИзвещение', 4),
-    ]),
-    u'ОшибкаОбработкиПакета': (5, [
-        (u'уведомлениеОбОшибке', 1),
-    ])
+
+u'''
+_edo_type_map = {'код документооборота': ('тип документооборота', {
+                  'код транзакции': 'тип транзакции',
+                  })
+                 }
+
+'''
+
+_edo_type_map = {
+    '1': (u'письмоРеспондент', {
+        '1': u'письмо',
+        '2': u'извещение',
+    }),
+    '2': (u'письмоОрганФСГС', {
+        '1': u'письмо',
+        '2': u'подтверждение',
+        '3': u'извещение',
+    }),
+    '3': (u'рассылка', {
+        '1': u'рассылка',
+        '2': u'подтверждение',
+    }),
+    '4': (u'отчетСтат', {
+        '1': u'отчет',
+        '2': u'отчетИзвещение',
+        '3': u'протокол',
+        '4': u'протоколИзвещение',
+    }),
+    '5': (u'ОшибкаОбработкиПакета', {
+        '1': u'уведомлениеОбОшибке',
+    })
 }
+
+_reverse_edo_map = dict(
+    (v[0], (k, dict((v, k) for (k, v) in v[1].items()))) for (k, v) in _edo_type_map.items())
 
 
 class StatSender(core.Schema):
@@ -114,7 +125,7 @@ class ContainerStat(core.Zipped, StatInfo):
         u'''
         Автоматически вычисляемый код типа документооборота
         '''
-        doc_code, _ = _doc_types.get(self.doc_type, None)
+        doc_code, _ = _reverse_edo_map.get(self.doc_type, None)
         return doc_code
 
     @property
@@ -122,7 +133,7 @@ class ContainerStat(core.Zipped, StatInfo):
         u'''
         Автоматически вычисляемый код типа транзакции
         '''
-        _, tr_map = _doc_types.get(self.doc_type, (0, []))
+        _, tr_map = _reverse_edo_map.get(self.doc_type, (0, []))
         return dict(tr_map).get(self.transaction, 0)
 
     class Meta:
