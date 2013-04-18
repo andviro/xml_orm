@@ -393,7 +393,7 @@ class ComplexField(SimpleField):
 
         if isinstance(self.cls, basestring):
             self._fields['Meta'] = type('Meta', (object,), {'root': self.cls})
-            self.cls = type(self.cls, (Schema,), self._fields)
+            self.cls = type(name.capitalize(), (Schema,), self._fields)
         self.tag = getattr(self.cls._meta, 'root', None)
 
         super(ComplexField, self).add_to_cls(cls, name)

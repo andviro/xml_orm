@@ -198,7 +198,8 @@ _doc_type_map = {
     },
 }
 
-_reverse_doctype_map = dict((k, dict((v, k) for (k, v) in v.items())) for (k, v) in _doc_type_map.items())
+_reverse_doctype_map = dict(
+    (k, dict((v, k) for (k, v) in v.items())) for (k, v) in _doc_type_map.items())
 
 
 class Sender(core.Schema):
@@ -213,14 +214,16 @@ class Sender(core.Schema):
                             setter='set_type')
 
     def get_type(self):
-        if not hasattr(self, '__type'):
+        if hasattr(self, '__type'):
+            return self.__type
+
+        if hasattr(self, 'uid'):
             if len(self.uid) == 3:
-                self.__type = u'спецоператор'
+                return u'спецоператор'
             elif len(self.uid) == 4:
-                self.__type = u'налоговыйОрган'
+                return u'налоговыйОрган'
             else:
-                self.__type = u'абонент'
-        return self.__type
+                return u'абонент'
 
     def set_type(self, value):
         self.__type = value
@@ -243,43 +246,34 @@ class Receiver(Sender):
         root = u'получатель'
 
 
-class Content(core.Schema):
-    u"""Дескриптор содержимого документа."""
-
-    # Имя файла в архиве
-    filename = core.SimpleField(u'@имяФайла')
-
-    class Meta:
-        root = u'содержимое'
-
-
-class Signature(Content):
-    u"""Дескриптор подписи документа. Отличается от содержимого наличием поля 'role' """
-
-    role = core.SimpleField(u'@роль', default=u'абонент')
-
-    class Meta:
-        root = u'подпись'
-
-
 class Document(core.Schema):
     u"""Дескриптор документа.
 
     """
     # атрибуты документа
-    type_code = core.CharField(u'@кодТипаДокумента', max_length=2, default=u'01')
-    type = core.SimpleField(u'@типДокумента', default=u'счетфактура')
-    content_type = core.SimpleField(u'@типСодержимого', default=u'xml')
-    compressed = core.BooleanField(u'@сжат', default=False)
-    encrypted = core.BooleanField(u'@зашифрован', default=False)
+    type_code = core.CharField(u'@кодТипаДокумента', max_length=2,)
+    type = core.SimpleField(u'@типДокумента')
+    content_type = core.SimpleField(u'@типСодержимого')
+    compressed = core.BooleanField(u'@сжат')
+    encrypted = core.BooleanField(u'@зашифрован')
     sign_required = core.BooleanField(u'@ОжидаетсяПодписьПолучателя', minOccurs=0)
     uid = core.SimpleField(u'@идентификаторДокумента')
-    orig_filename = core.SimpleField(u'@исходноеИмяФайла')
+    orig_filename = core.SimpleField(u'@исходноеИмяФайла', minOccurs=0)
 
     # содержимое
-    content = core.ComplexField(Content, minOccurs=0)
+    content = core.ComplexField(u'содержимое',
+                                minOccurs=0,
+
+                                filename=core.SimpleField(u'@имяФайла')
+                                )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
+    signature = core.ComplexField(u'подпись',
+                                  minOccurs=0,
+                                  maxOccurs='unbounded',
+
+                                  role=core.SimpleField(u'@роль'),
+                                  filename=core.SimpleField(u'@имяФайла'),
+                                  )
 
     def __init__(self, *args, **nargs):
         u''' Инициализация полей, которые не загружаются/сохраняются из
@@ -299,14 +293,14 @@ class TransInfo(core.Schema):
 
     """
     version = core.SimpleField(u'@версияФормата', default=u"ФНС:1.0")
-    doc_type = core.SimpleField(u'@типДокументооборота', default=u"СчетФактура")
-    doc_code = core.CharField(u'@кодТипаДокументооборота', max_length=2, default=u"20")
+    doc_code = core.CharField(u'@кодТипаДокументооборота', max_length=2)
+    doc_type = core.SimpleField(u'@типДокументооборота')
+    trans_code = core.CharField(u'@кодТипаТранзакции', max_length=2)
+    transaction = core.SimpleField(u'@типТранзакции')
     uid = core.SimpleField(u'@идентификаторДокументооборота')
-    transaction = core.SimpleField(u'@типТранзакции', default=u'СчетФактураПродавец')
-    trans_code = core.CharField(u'@кодТипаТранзакции', max_length=2, default=u'01')
-    soft_version = core.SimpleField(u'@ВерсПрог', default=u'АстралОтчет 1.0')
+    soft_version = core.SimpleField(u'@ВерсПрог', default=u'XML ORM')
     sender = core.ComplexField(Sender)
-    sos = core.ComplexField(SOS)
+    sos = core.ComplexField(SOS, minOccurs=0)
     receiver = core.ComplexField(Receiver)
     extra = core.RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка

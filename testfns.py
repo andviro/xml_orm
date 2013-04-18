@@ -17,20 +17,28 @@ def setup_module():
     # для непереданных полей присваиваются значения по умолчанию
     # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
     # .save() или преобразовать контейнер в XML.
-    with ContainerFNS(uid=uuid4().hex) as ti:
+    with ContainerFNS(uid=uuid4().hex,
+                      doc_type=u'Декларация',
+                      doc_code='01',
+                      trans_code='01',
+                      transaction=u"ДекларацияНП",
+                      ) as ti:
         # сохранение сработает, только если контейнер сформирован корректно
         ti.sender = ContainerFNS.Sender(uid=uuid4().hex)
         ti.receiver = ti.Receiver(uid=uuid4().hex)
         ti.sos = ti.Sos(uid=u'2AE')
         for n in range(3):
             uid = uuid4().hex
-            doc = ti.Doc(orig_filename=uid + '.xml')
+            doc = ti.Doc(orig_filename=uid + '.xml', type_code='01', type=u'декларация',)
+            doc.content_type = 'text'
+            doc.compressed = False
+            doc.encrypted = False
             # Добавление дескриптора документа к дескриптору контейнера
             ti.doc.append(doc)
             # Добавление собственно файла к содержимому контейнера
             ti.add_file(doc.content.filename, 'test document content')
             for k in range(2):
-                sig = doc.Signature(filename=(uuid4().hex + '.bin'))
+                sig = doc.Signature(filename=(uuid4().hex + '.bin'), role=u'спецоператор')
                 # Добавление дескриптора подписи к дескриптору документа
                 doc.signature.append(sig)
                 # Добавление файла подписи к содержимому контейнера

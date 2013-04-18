@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 from .. import core
-from .fns import Content, Signature
 from uuid import uuid4
 
 
@@ -69,9 +68,19 @@ class StatDocument(core.Schema):
         root = u'документ'
 
     #содержимое
-    content = core.ComplexField(Content, minOccurs=0)
+    content = core.ComplexField(u'содержимое',
+                                minOccurs=0,
+
+                                filename=core.SimpleField(u'@имяФайла')
+                                )
     #подпись
-    signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
+    signature = core.ComplexField(u'подпись',
+                                  minOccurs=0,
+                                  maxOccurs='unbounded',
+
+                                  role=core.SimpleField(u'@роль'),
+                                  filename=core.SimpleField(u'@имяФайла'),
+                                  )
     type = core.SimpleField(u'@типДокумента')
     content_type = core.SimpleField(u'@типСодержимого')
     compressed = core.BooleanField(u'@сжат')

@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 from .. import core
-from .fns import Sender, Content, Signature
+from .fns import Sender
 from uuid import uuid4
 
 u'''
@@ -84,17 +84,26 @@ class PFRDocument(core.Schema):
 
     """
     # атрибуты документа
-    type = core.SimpleField(u'@типДокумента', default=u'пачкаАДВ')
-    content_type = core.SimpleField(u'@типСодержимого', default=u'plain866')
-    compressed = core.BooleanField(u'@сжат', default=False)
-    encrypted = core.BooleanField(u'@зашифрован', default=False)
+    type = core.SimpleField(u'@типДокумента')
+    content_type = core.SimpleField(u'@типСодержимого')
+    compressed = core.BooleanField(u'@сжат')
+    encrypted = core.BooleanField(u'@зашифрован')
     sign_required = core.BooleanField(u'@ОжидаетсяПодписьПолучателя', minOccurs=0)
     uid = core.SimpleField(u'@идентификаторДокумента')
 
-    # содержимое
-    content = core.ComplexField(Content, minOccurs=0)
+    content = core.ComplexField(u'содержимое',
+                                minOccurs=0,
+
+                                filename=core.SimpleField(u'@имяФайла')
+                                )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField(Signature, minOccurs=0, maxOccurs='unbounded')
+    signature = core.ComplexField(u'подпись',
+                                  minOccurs=0,
+                                  maxOccurs='unbounded',
+
+                                  role=core.SimpleField(u'@роль'),
+                                  filename=core.SimpleField(u'@имяФайла'),
+                                  )
 
     class Meta:
         root = u'документ'
@@ -114,7 +123,7 @@ class SKZI(core.Schema):
 
     """
     # атрибуты документа
-    type = core.SimpleField(u'@типСКЗИ', default=u'Крипто-Про')
+    type = core.SimpleField(u'@типСКЗИ')
 
     class Meta:
         root = u'СКЗИ'
@@ -123,8 +132,8 @@ class SKZI(core.Schema):
 class PFRInfo(core.Schema):
     # атрибуты
     version = core.SimpleField(u'@версияФормата', default=u"1.2")
-    doc_type = core.SimpleField(u'@типДокументооборота', default=u"СведенияПФР")
-    transaction = core.SimpleField(u'@типТранзакции', default=u'сведения')
+    doc_type = core.SimpleField(u'@типДокументооборота')
+    transaction = core.SimpleField(u'@типТранзакции')
     uid = core.SimpleField(u'@идентификаторДокументооборота')
     date = core.SimpleField(u'@датаВремяПоступления', minOccurs=0)
     # элементы
