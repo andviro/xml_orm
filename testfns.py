@@ -29,7 +29,11 @@ def setup_module():
         ti.sos = ti.Sos(uid=u'2AE')
         for n in range(3):
             uid = uuid4().hex
-            doc = ti.Doc(orig_filename=uid + '.xml', type_code='01', type=u'декларация',)
+            doc = ti.Doc(uid=uid,
+                         orig_filename=uid + '.xml',
+                         type_code='01',
+                         content=ti.Doc.Content(filename=uid + '.xml'),
+                         type=u'декларация',)
             doc.content_type = 'text'
             doc.compressed = False
             doc.encrypted = False

@@ -2,7 +2,8 @@
 #-*- coding: utf-8 -*-
 
 from .pfr import ContainerPFR
-from .fns import ContainerFNS, ContainerEDI
+from .fns import ContainerFNS
+from .edi import ContainerEDI
 from .stat import ContainerStat
 
 import re
@@ -30,8 +31,8 @@ def autoload(fn, content=None):
     if base.startswith('FNS_'):
         res = ContainerFNS.load(content or fn)
     elif base.startswith('EDI_'):
-        res = ContainerFNS.load(content or fn)
-    elif re.match(r'\d{3}-\d{3}-\d{6}_.*', base):
+        res = ContainerEDI.load(content or fn)
+    elif re.match(r'\d{3}-\d{3}(-\d{6})?_.*', base):
         res = ContainerPFR.load(content or fn)
     elif base.lower().startswith('stat'):
         res = ContainerStat.load(content or fn)

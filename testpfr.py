@@ -21,7 +21,7 @@ def setup_module():
     pfr.sender = pfr.Sender(uid='123-456-789012')
     pfr.skzi = pfr.Skzi(uid=uuid4().hex, type='Крипто-Про')
     pfr.receiver = pfr.Receiver(uid='123-534')
-    pfr.sos = pfr.Sos(uid=u'2AE')
+    pfr.sender_sys = pfr.Sender_sys(uid=u'2AE')
     for n in range(3):
         doc = pfr.Doc()
         doc.uid = uuid4().hex

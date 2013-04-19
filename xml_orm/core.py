@@ -152,12 +152,10 @@ class SimpleField(_SortedEntry):
 
     def load(self, *args, **nargs):
         if self.is_attribute:
-            val = self._load_attrib(*args, **nargs)
+            return self._load_attrib(*args, **nargs)
         elif self.is_text:
-            val = self._load_text(*args, **nargs)
-        else:
-            val = self._load_element(*args, **nargs)
-        return val
+            return self._load_text(*args, **nargs)
+        return self._load_element(*args, **nargs)
 
     def _load_attrib(self, stack, ns):
         """@todo: Docstring for _load_attrib
@@ -214,17 +212,31 @@ class SimpleField(_SortedEntry):
             return res
 
     def check_len(self, val):
-        return ((self.has_default or len(val) >= self.minOccurs) and
-                (self.maxOccurs == 'unbounded' or len(val) <= self.maxOccurs))
+        l = len(val) if isinstance(val, list) else 1
+        return ((self.has_default or l >= self.minOccurs) and
+                (self.maxOccurs == 'unbounded' or l <= self.maxOccurs))
 
 
 class RawField(SimpleField):
     """Docstring for RawField """
 
+    def _load_element(self, stack, ns):
+        """@todo: Docstring for _load_element
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        qn = self.qname(ns)
+        return [x for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
+                                            self.maxOccurs)]
+
     def to_python(self, root):
         return root
 
-    def xml(self, value, ns):
+    def xml(self, value, ns=None):
         return value
 
 
@@ -540,8 +552,9 @@ class Schema(object):
         stack = _Stack(root)
         for field in new_elt._fields:
             val = field.load(stack, ns)
-            if not(val) and field.has_default:
-                res = field.default
+            if not(val) and field.has_default and field.minOccurs > 0:
+                res = (field.default
+                       if isinstance(field.default, list) else [field.default])
             else:
                 res = [field.to_python(x) for x in val]
 
@@ -556,6 +569,7 @@ class Schema(object):
             elif len(res):
                 setattr(new_elt, field.name, res[0])
         if len(stack):
+            print stack
             raise ValidationError(u'Unexpected {0} nodes after last field'
                                   .format(len(stack)))
         return new_elt
@@ -575,10 +589,10 @@ class Schema(object):
                 else:
                     continue
             value = getattr(self, field.name)
+            if not field.check_len(value):
+                raise SerializationError(u'Invalid occurence count {0} for field "{1}"'
+                                         .format(len(value), field.name))
             if isinstance(value, list):
-                if not field.check_len(value):
-                    raise SerializationError(u'Invalid list size {0} for field "{1}"'
-                                             .format(len(value), field.name))
                 value = [field.xml(v) for v in value]
             else:
                 value = [field.xml(value)]

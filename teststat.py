@@ -20,7 +20,8 @@ def setup_module():
     stat.transaction = u'протоколИзвещение'
     stat.sender = stat.Sender(uid=uuid4().hex, type=u'респондент', name=u'рога и копыта')
     stat.receiver = stat.Receiver(uid=uuid4().hex, type=u'органФСГС')
-    stat.sos = stat.Sos(uid=u'2AE', type=u'оператор')
+    stat.sender_sys = stat.Sender_sys(uid=u'2AE', type=u'оператор')
+    stat.receiver_sys = stat.Receiver_sys(uid=u'2AE', type=u'оператор')
     for n in range(3):
         doc = stat.Doc()
         doc.uid = uuid4().hex

@@ -256,7 +256,6 @@ class Document(core.Schema):
     content_type = core.SimpleField(u'@типСодержимого')
     compressed = core.BooleanField(u'@сжат')
     encrypted = core.BooleanField(u'@зашифрован')
-    sign_required = core.BooleanField(u'@ОжидаетсяПодписьПолучателя', minOccurs=0)
     uid = core.SimpleField(u'@идентификаторДокумента')
     orig_filename = core.SimpleField(u'@исходноеИмяФайла', minOccurs=0)
 
@@ -281,8 +280,6 @@ class Document(core.Schema):
         созданных контейнеров при формировании имени архива.
         '''
         super(Document, self).__init__(*args, **nargs)
-        self.uid = uuid4().hex
-        self.content = self.Content(filename=u'{0}.bin'.format(self.uid))
 
     class Meta:
         root = u'документ'
@@ -298,7 +295,7 @@ class TransInfo(core.Schema):
     trans_code = core.CharField(u'@кодТипаТранзакции', max_length=2)
     transaction = core.SimpleField(u'@типТранзакции')
     uid = core.SimpleField(u'@идентификаторДокументооборота')
-    soft_version = core.SimpleField(u'@ВерсПрог', default=u'XML ORM')
+    soft_version = core.SimpleField(u'@ВерсПрог', minOccurs=0)
     sender = core.ComplexField(Sender)
     sos = core.ComplexField(SOS, minOccurs=0)
     receiver = core.ComplexField(Receiver)
@@ -335,13 +332,4 @@ class ContainerFNS(core.Zipped, TransInfo):
         pretty_print = True
 
         package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
-                   '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')
-
-
-class ContainerEDI(ContainerFNS):
-
-    protocol = 20
-
-    class Meta:
-        package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
                    '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')

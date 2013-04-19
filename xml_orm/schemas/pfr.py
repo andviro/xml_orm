@@ -72,11 +72,18 @@ class PFRReceiver(PFRSender):
         root = u'получатель'
 
 
-class PFRSystem(PFRSender):
+class PFRSystemSender(PFRSender):
     u"""Дескриптор получателя, отличается от отправителя только тегом. """
 
     class Meta:
         root = u'системаОтправителя'
+
+
+class PFRSystemReceiver(PFRSender):
+    u"""Дескриптор получателя, отличается от отправителя только тегом. """
+
+    class Meta:
+        root = u'системаПолучателя'
 
 
 class PFRDocument(core.Schema):
@@ -114,8 +121,6 @@ class PFRDocument(core.Schema):
         созданных контейнеров при формировании имени архива.
         '''
         super(PFRDocument, self).__init__(*args, **nargs)
-        self.uid = uuid4().hex
-        self.content = self.Content(filename='{0}.bin'.format(self.uid))
 
 
 class SKZI(core.Schema):
@@ -139,7 +144,8 @@ class PFRInfo(core.Schema):
     # элементы
     skzi = core.ComplexField(SKZI)
     sender = core.ComplexField(PFRSender)
-    sos = core.ComplexField(PFRSystem)
+    sender_sys = core.ComplexField(PFRSystemSender, minOccurs=0)
+    receiver_sys = core.ComplexField(PFRSystemReceiver, minOccurs=0)
     receiver = core.ComplexField(PFRReceiver)
     extra = core.RawField(u'расширения', minOccurs=0)
     doc = core.ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')

@@ -93,8 +93,6 @@ class StatDocument(core.Schema):
         созданных контейнеров при формировании имени архива.
         '''
         super(StatDocument, self).__init__(*args, **nargs)
-        self.uid = uuid4().hex
-        self.content = self.Content(filename='{0}.bin'.format(self.uid))
 
 
 class StatInfo(core.Schema):
@@ -108,10 +106,19 @@ class StatInfo(core.Schema):
 
     #отправитель
     sender = core.ComplexField(StatSender)
-    #системаОтправителя
-    sos = core.ComplexField(StatSystem, minOccurs=0)
+    sender_sys = core.ComplexField(u'системаОтправителя',
+                                   minOccurs=0,
+                                   uid=core.SimpleField(u'@идентификаторСубъекта'),
+                                   type=core.SimpleField(u'@типСубъекта'),
+                                   )
     #получатель
     receiver = core.ComplexField(StatReceiver)
+    receiver_sys = core.ComplexField(u'системаПолучателя',
+                                     minOccurs=0,
+                                     uid=core.SimpleField(u'@идентификаторСубъекта'),
+                                     type=core.SimpleField(u'@типСубъекта'),
+                                     )
+    extra = core.RawField(u'расширения', minOccurs=0)
     #документ
     doc = core.ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
 
