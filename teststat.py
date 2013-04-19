@@ -33,14 +33,14 @@ def setup_module():
         # Добавление дескриптора документа к дескриптору контейнера
         stat.doc.append(doc)
         # Добавление собственно файла к содержимому контейнера
-        stat.add_file(doc.content.filename, 'test document content')
+        stat.write(doc.content.filename, 'test document content')
         for k in range(2):
             sig = doc.Signature(filename=(uuid4().hex + '.bin'),
                                 role=u'респондент')
             # Добавление дескриптора подписи к дескриптору документа
             doc.signature.append(sig)
             # Добавление файла подписи к содержимому контейнера
-            stat.add_file(sig.filename, 'test signature content')
+            stat.write(sig.filename, 'test signature content')
 
 
 def teardown_module():

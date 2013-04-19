@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 from uuid import uuid4
 from .. import core
+from .util import ContainerUtil
 
 u'''
 _edo_type_map = {'код документооборота': ('тип документооборота', {
@@ -307,7 +308,7 @@ class TransInfo(core.Schema):
         root = u'ТрансИнф'
 
 
-class ContainerFNS(core.Zipped, TransInfo):
+class ContainerFNS(core.Zipped, ContainerUtil, TransInfo):
     """Docstring for ContainerFNS """
 
     protocol = 7
@@ -319,6 +320,10 @@ class ContainerFNS(core.Zipped, TransInfo):
         '''
         self.file_uid = uuid4().hex
         super(ContainerFNS, self).__init__(*args, **nargs)
+
+    def add_file(self, *args, **nargs):
+        doc = super(ContainerFNS, self).add_file(*args, **nargs)
+        doc.type_code = _reverse_doctype_map[self.trans_code][doc.type]
 
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть

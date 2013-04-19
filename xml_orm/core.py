@@ -664,8 +664,8 @@ class Zipped(object):
             res.package = package
         return res
 
-    def add_file(self, name, content):
-        u''' Добавление файла в ZIP-контейнер.
+    def write(self, name, content):
+        u''' Запись файла в ZIP-контейнер.
 
         :name: Имя файла в архиве
         :content: Байтовая строка с содержимым
@@ -675,6 +675,17 @@ class Zipped(object):
 
         '''
         self._storage[name] = content
+
+    def read(self, name):
+        u''' Извлечение файла из ZIP-контейнера.
+
+        :name: Имя файла в архиве
+        :returns: Байтовая строка с содержимым
+
+        '''
+        if name in self._storage:
+            return self._storage[name]
+        return self._old_zip.read(name)
 
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
