@@ -3,6 +3,7 @@
 
 from .. import core
 from .fns import Sender
+from .util import ContainerUtil
 from uuid import uuid4
 
 u'''
@@ -156,7 +157,7 @@ class PFRInfo(core.Schema):
         encoding = 'utf-8'
 
 
-class ContainerPFR(core.Zipped, PFRInfo):
+class ContainerPFR(core.Zipped, ContainerUtil, PFRInfo):
 
     protocol = 2
 

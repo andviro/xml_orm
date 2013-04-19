@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 from .. import core
+from .util import ContainerUtil
 from uuid import uuid4
 
 
@@ -123,7 +124,7 @@ class StatInfo(core.Schema):
     doc = core.ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
 
 
-class ContainerStat(core.Zipped, StatInfo):
+class ContainerStat(core.Zipped, ContainerUtil, StatInfo):
     """Docstring for ContainerStat """
 
     protocol = 4

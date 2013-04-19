@@ -39,7 +39,8 @@ _doc_type_map = {
     '07': u'уведомлениеОбУточнении'
 }
 
-_reverse_doctype_map = dict((v, k) for (k, v) in _doc_type_map.items())
+_reverse_doctype_map = dict((k, dict((v, k) for (k, v) in
+                                     _doc_type_map.items())) for k in _edo_type_map)
 
 
 class EDIDocument(Document):

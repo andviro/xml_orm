@@ -23,24 +23,10 @@ def setup_module():
     stat.sender_sys = stat.Sender_sys(uid=u'2AE', type=u'оператор')
     stat.receiver_sys = stat.Receiver_sys(uid=u'2AE', type=u'оператор')
     for n in range(3):
-        doc = stat.Doc()
-        doc.uid = uuid4().hex
-        doc.orig_filename = doc.uid + '.xml'
-        doc.content = doc.Content(filename=(doc.uid + '.bin'))
-        doc.compressed = doc.encrypted = True
-        doc.content_type = u'xml'
-        doc.type = u'отчет'
-        # Добавление дескриптора документа к дескриптору контейнера
-        stat.doc.append(doc)
-        # Добавление собственно файла к содержимому контейнера
-        stat.write(doc.content.filename, 'test document content')
-        for k in range(2):
-            sig = doc.Signature(filename=(uuid4().hex + '.bin'),
-                                role=u'респондент')
-            # Добавление дескриптора подписи к дескриптору документа
-            doc.signature.append(sig)
-            # Добавление файла подписи к содержимому контейнера
-            stat.write(sig.filename, 'test signature content')
+        stat.add_file(filename='some{0}.xml'.format(n), doc_type=u'отчет',
+                      content_type='xml', content='test content {0}'.format(n),
+                      signature='test sign content {0}'.format(n),
+                      sig_role=u'респондент')
 
 
 def teardown_module():

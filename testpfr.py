@@ -23,24 +23,10 @@ def setup_module():
     pfr.receiver = pfr.Receiver(uid='123-534')
     pfr.sender_sys = pfr.Sender_sys(uid=u'2AE')
     for n in range(3):
-        doc = pfr.Doc()
-        doc.uid = uuid4().hex
-        doc.orig_filename = doc.uid + '.xml'
-        doc.type = u'протокол'
-        doc.content_type = u'plain866'
-        doc.compressed = False
-        doc.encrypted = False
-        doc.content = doc.Content(filename=(doc.uid + '.bin'))
-        # Добавление дескриптора документа к дескриптору контейнера
-        pfr.doc.append(doc)
-        # Добавление собственно файла к содержимому контейнера
-        pfr.write(doc.content.filename, 'test document content')
-        for k in range(2):
-            sig = doc.Signature(filename=(uuid4().hex + '.bin'), role=u'провайдер')
-            # Добавление дескриптора подписи к дескриптору документа
-            doc.signature.append(sig)
-            # Добавление файла подписи к содержимому контейнера
-            pfr.write(sig.filename, 'test signature content')
+        pfr.add_file(filename='some{0}.xml'.format(n), doc_type=u'протокол',
+                     content_type='xml', content='test content {0}'.format(n),
+                     signature='test sign content {0}'.format(n),
+                     sig_role=u'провайдер')
 
 
 def teardown_module():
