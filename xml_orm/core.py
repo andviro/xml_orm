@@ -147,6 +147,9 @@ class SimpleField(_SortedEntry):
         self.tag = self.tag or name
         cls._fields.append(self)
 
+    def repr(self, val):
+        return '{0}={1!r}'.format(self.name, val)
+
     def to_string(self, val):
         return unicode(val)
 
@@ -405,7 +408,8 @@ class ComplexField(SimpleField):
 
         if isinstance(self.cls, basestring):
             self._fields['Meta'] = type('Meta', (object,), {'root': self.cls})
-            self.cls = type(name.capitalize(), (Schema,), self._fields)
+            newname = '{0}.{1}'.format(cls.__name__, name.capitalize())
+            self.cls = type(newname, (Schema,), self._fields)
         self.tag = getattr(self.cls._meta, 'root', None)
 
         super(ComplexField, self).add_to_cls(cls, name)
@@ -617,9 +621,9 @@ class Schema(object):
                                                            False)))
 
     def __repr__(self):
-        return etree.tostring(self.xml(),
-                              encoding=getattr(self._meta, 'encoding', 'utf-8'),
-                              pretty_print=getattr(self._meta, 'pretty_print', False))
+        fieldrepr = ', '.join(x.repr(getattr(self, x.name)) for x in
+                              self._fields if hasattr(self, x.name))
+        return '{0}({1})'.format(self.__class__.__name__, fieldrepr)
 
     def __str__(self):
         return etree.tostring(self.xml(),

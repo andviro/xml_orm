@@ -306,3 +306,23 @@ def test_new_syntax():
     ''')
     c = newsch.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
+
+
+def test_repr():
+    class A(core.Schema):
+        a = core.IntegerField()
+        b = core.ComplexField(
+            c=core.IntegerField(),
+            d=core.IntegerField(),
+            e=core.ComplexField(f=core.CharField(max_length=3, is_attribute=False))
+        )
+
+    a = A()
+    a.a = 1
+    a.b = A.B()
+    a.b.c = 1
+    a.b.d = 2
+    a.b.e = A.B.E(f=u"3")
+    assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f=u'3')))"
+    b = eval(repr(a), {}, locals())
+    assert unicode(b) == u'<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'

@@ -64,5 +64,3 @@ def test_load():
         # выход из контекста сохраняет архив
     assert os.path.isfile(extra_package)
     assert 'lalalala' in ZipFile(extra_package).namelist()
-
-setup_module()
