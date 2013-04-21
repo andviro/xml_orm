@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from .. import core
+from ..fields import *
 from .fns import Document, ContainerFNS
 
 '''
@@ -44,14 +44,14 @@ _reverse_doctype_map = dict((k, dict((v, k) for (k, v) in
 
 
 class EDIDocument(Document):
-    sign_required = core.BooleanField('@ОжидаетсяПодписьПолучателя', minOccurs=0)
+    sign_required = BooleanField('@ОжидаетсяПодписьПолучателя', minOccurs=0)
 
 
 class ContainerEDI(ContainerFNS):
 
     protocol = 20
 
-    doc = core.ComplexField(EDIDocument, minOccurs=0, maxOccurs='unbounded')
+    doc = ComplexField(EDIDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'

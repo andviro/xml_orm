@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from .. import core
+from ..core import Schema
+from ..util import Zipped
+from ..fields import *
 from .fns import Sender
 from .util import ContainerUtil
 from uuid import uuid4
@@ -87,31 +89,31 @@ class PFRSystemReceiver(PFRSender):
         root = 'системаПолучателя'
 
 
-class PFRDocument(core.Schema):
+class PFRDocument(Schema):
     """Дескриптор документа.
 
     """
     # атрибуты документа
-    type = core.SimpleField('@типДокумента')
-    content_type = core.SimpleField('@типСодержимого')
-    compressed = core.BooleanField('@сжат')
-    encrypted = core.BooleanField('@зашифрован')
-    sign_required = core.BooleanField('@ОжидаетсяПодписьПолучателя', minOccurs=0)
-    uid = core.SimpleField('@идентификаторДокумента')
+    type = SimpleField('@типДокумента')
+    content_type = SimpleField('@типСодержимого')
+    compressed = BooleanField('@сжат')
+    encrypted = BooleanField('@зашифрован')
+    sign_required = BooleanField('@ОжидаетсяПодписьПолучателя', minOccurs=0)
+    uid = SimpleField('@идентификаторДокумента')
 
-    content = core.ComplexField('содержимое',
-                                minOccurs=0,
+    content = ComplexField('содержимое',
+                           minOccurs=0,
 
-                                filename=core.SimpleField('@имяФайла')
-                                )
+                           filename=SimpleField('@имяФайла')
+                           )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField('подпись',
-                                  minOccurs=0,
-                                  maxOccurs='unbounded',
+    signature = ComplexField('подпись',
+                             minOccurs=0,
+                             maxOccurs='unbounded',
 
-                                  role=core.SimpleField('@роль'),
-                                  filename=core.SimpleField('@имяФайла'),
-                                  )
+                             role=SimpleField('@роль'),
+                             filename=SimpleField('@имяФайла'),
+                             )
 
     class Meta:
         root = 'документ'
@@ -124,32 +126,32 @@ class PFRDocument(core.Schema):
         super(PFRDocument, self).__init__(*args, **nargs)
 
 
-class SKZI(core.Schema):
+class SKZI(Schema):
     """Дескриптор документа.
 
     """
     # атрибуты документа
-    type = core.SimpleField('@типСКЗИ')
+    type = SimpleField('@типСКЗИ')
 
     class Meta:
         root = 'СКЗИ'
 
 
-class PFRInfo(core.Schema):
+class PFRInfo(Schema):
     # атрибуты
-    version = core.SimpleField('@версияФормата', default="1.2")
-    doc_type = core.SimpleField('@типДокументооборота')
-    transaction = core.SimpleField('@типТранзакции')
-    uid = core.SimpleField('@идентификаторДокументооборота')
-    date = core.SimpleField('@датаВремяПоступления', minOccurs=0)
+    version = SimpleField('@версияФормата', default="1.2")
+    doc_type = SimpleField('@типДокументооборота')
+    transaction = SimpleField('@типТранзакции')
+    uid = SimpleField('@идентификаторДокументооборота')
+    date = SimpleField('@датаВремяПоступления', minOccurs=0)
     # элементы
-    skzi = core.ComplexField(SKZI)
-    sender = core.ComplexField(PFRSender)
-    sender_sys = core.ComplexField(PFRSystemSender, minOccurs=0)
-    receiver_sys = core.ComplexField(PFRSystemReceiver, minOccurs=0)
-    receiver = core.ComplexField(PFRReceiver)
-    extra = core.RawField('расширения', minOccurs=0)
-    doc = core.ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
+    skzi = ComplexField(SKZI)
+    sender = ComplexField(PFRSender)
+    sender_sys = ComplexField(PFRSystemSender, minOccurs=0)
+    receiver_sys = ComplexField(PFRSystemReceiver, minOccurs=0)
+    receiver = ComplexField(PFRReceiver)
+    extra = RawField('расширения', minOccurs=0)
+    doc = ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = 'пакет'
@@ -157,7 +159,7 @@ class PFRInfo(core.Schema):
         encoding = 'utf-8'
 
 
-class ContainerPFR(core.Zipped, ContainerUtil, PFRInfo):
+class ContainerPFR(Zipped, ContainerUtil, PFRInfo):
 
     protocol = 2
 

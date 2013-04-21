@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from .. import core
+
+from ..core import Schema
+from ..util import Zipped
+from ..fields import *
 from .util import ContainerUtil
 from uuid import uuid4
 
@@ -42,21 +45,21 @@ _reverse_edo_map = dict(
     (v[0], (k, dict((v, k) for (k, v) in v[1].items()))) for (k, v) in _edo_type_map.items())
 
 
-class StatSender(core.Schema):
+class StatSender(Schema):
     class Meta:
         root = 'отправитель'
 
-    uid = core.SimpleField('@идентификаторСубъекта')
-    type = core.SimpleField('@типСубъекта')
-    name = core.SimpleField('@названиеОрганизации', minOccurs=0)
+    uid = SimpleField('@идентификаторСубъекта')
+    type = SimpleField('@типСубъекта')
+    name = SimpleField('@названиеОрганизации', minOccurs=0)
 
 
-class StatSystem(core.Schema):
+class StatSystem(Schema):
     class Meta:
         root = 'системаОтправителя'
 
-    uid = core.SimpleField('@идентификаторСубъекта')
-    type = core.SimpleField('@типСубъекта')
+    uid = SimpleField('@идентификаторСубъекта')
+    type = SimpleField('@типСубъекта')
 
 
 class StatReceiver(StatSystem):
@@ -64,29 +67,29 @@ class StatReceiver(StatSystem):
         root = 'получатель'
 
 
-class StatDocument(core.Schema):
+class StatDocument(Schema):
     class Meta:
         root = 'документ'
 
     #содержимое
-    content = core.ComplexField('содержимое',
-                                minOccurs=0,
+    content = ComplexField('содержимое',
+                           minOccurs=0,
 
-                                filename=core.SimpleField('@имяФайла')
-                                )
+                           filename=SimpleField('@имяФайла')
+                           )
     #подпись
-    signature = core.ComplexField('подпись',
-                                  minOccurs=0,
-                                  maxOccurs='unbounded',
+    signature = ComplexField('подпись',
+                             minOccurs=0,
+                             maxOccurs='unbounded',
 
-                                  role=core.SimpleField('@роль'),
-                                  filename=core.SimpleField('@имяФайла'),
-                                  )
-    type = core.SimpleField('@типДокумента')
-    content_type = core.SimpleField('@типСодержимого')
-    compressed = core.BooleanField('@сжат')
-    encrypted = core.BooleanField('@зашифрован')
-    uid = core.SimpleField('@идентификаторДокумента')
+                             role=SimpleField('@роль'),
+                             filename=SimpleField('@имяФайла'),
+                             )
+    type = SimpleField('@типДокумента')
+    content_type = SimpleField('@типСодержимого')
+    compressed = BooleanField('@сжат')
+    encrypted = BooleanField('@зашифрован')
+    uid = SimpleField('@идентификаторДокумента')
 
     def __init__(self, *args, **nargs):
         ''' Инициализация полей, которые не загружаются/сохраняются из
@@ -96,35 +99,35 @@ class StatDocument(core.Schema):
         super(StatDocument, self).__init__(*args, **nargs)
 
 
-class StatInfo(core.Schema):
+class StatInfo(Schema):
     class Meta:
         root = 'пакет'
 
-    version = core.SimpleField('@версияФормата', default='Стат:1.0')
-    uid = core.SimpleField('@идентификаторДокументооборота')
-    doc_type = core.SimpleField('@типДокументооборота')
-    transaction = core.SimpleField('@типТранзакции')
+    version = SimpleField('@версияФормата', default='Стат:1.0')
+    uid = SimpleField('@идентификаторДокументооборота')
+    doc_type = SimpleField('@типДокументооборота')
+    transaction = SimpleField('@типТранзакции')
 
     #отправитель
-    sender = core.ComplexField(StatSender)
-    sender_sys = core.ComplexField('системаОтправителя',
-                                   minOccurs=0,
-                                   uid=core.SimpleField('@идентификаторСубъекта'),
-                                   type=core.SimpleField('@типСубъекта'),
-                                   )
+    sender = ComplexField(StatSender)
+    sender_sys = ComplexField('системаОтправителя',
+                              minOccurs=0,
+                              uid=SimpleField('@идентификаторСубъекта'),
+                              type=SimpleField('@типСубъекта'),
+                              )
     #получатель
-    receiver = core.ComplexField(StatReceiver)
-    receiver_sys = core.ComplexField('системаПолучателя',
-                                     minOccurs=0,
-                                     uid=core.SimpleField('@идентификаторСубъекта'),
-                                     type=core.SimpleField('@типСубъекта'),
-                                     )
-    extra = core.RawField('расширения', minOccurs=0)
+    receiver = ComplexField(StatReceiver)
+    receiver_sys = ComplexField('системаПолучателя',
+                                minOccurs=0,
+                                uid=SimpleField('@идентификаторСубъекта'),
+                                type=SimpleField('@типСубъекта'),
+                                )
+    extra = RawField('расширения', minOccurs=0)
     #документ
-    doc = core.ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
+    doc = ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
 
 
-class ContainerStat(core.Zipped, ContainerUtil, StatInfo):
+class ContainerStat(Zipped, ContainerUtil, StatInfo):
     """Docstring for ContainerStat """
 
     protocol = 4

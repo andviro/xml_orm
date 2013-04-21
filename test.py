@@ -1,5 +1,6 @@
 # coding: utf-8
-from xml_orm import core
+from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError
+from xml_orm.fields import BooleanField, IntegerField, SimpleField, CharField, FloatField, ComplexField, DecimalField
 from nose.tools import raises
 import sys
 
@@ -11,10 +12,10 @@ else:
     unicode = unicode
 
 
-class Document(core.Schema):
-    uid = core.IntegerField('ИД')
-    abzats = core.SimpleField(is_text=1, minOccurs=0)
-    name = core.CharField('ИмяФайла', max_length=255)
+class Document(Schema):
+    uid = IntegerField('ИД')
+    abzats = SimpleField(is_text=1, minOccurs=0)
+    name = CharField('ИмяФайла', max_length=255)
 
     class Meta:
         root = 'Документ'
@@ -22,31 +23,31 @@ class Document(core.Schema):
         encoding = 'cp1251'
 
 
-class Author(core.Schema):
-    name = core.SimpleField('Имя')
-    surname = core.SimpleField('Фамилия')
-    is_poet = core.BooleanField('Поэт')
+class Author(Schema):
+    name = SimpleField('Имя')
+    surname = SimpleField('Фамилия')
+    is_poet = BooleanField('Поэт')
 
     class Meta:
         root = 'Автор'
 
 
-class Signature(core.Schema):
-    uid = core.CharField('@ИД', max_length=32, qualify=True)
-    probability = core.FloatField('Вероятность')
-    surname = core.SimpleField(is_text=1)
+class Signature(Schema):
+    uid = CharField('@ИД', max_length=32, qualify=True)
+    probability = FloatField('Вероятность')
+    surname = SimpleField(is_text=1)
 
     class Meta:
         root = 'Подпись'
         namespace = 'http://www.example.com/signature'
 
 
-class Book(core.Schema):
-    uid = core.CharField('@ИД', max_length=32)
-    auth = core.ComplexField(Author)
-    doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
-    signer = core.ComplexField(Signature, minOccurs=0)
-    price = core.DecimalField('Цена', decimal_places=2, max_digits=10)
+class Book(Schema):
+    uid = CharField('@ИД', max_length=32)
+    auth = ComplexField(Author)
+    doc = ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    signer = ComplexField(Signature, minOccurs=0)
+    price = DecimalField('Цена', decimal_places=2, max_digits=10)
 
     class Meta:
         root = 'Книга'
@@ -54,10 +55,10 @@ class Book(core.Schema):
 
 
 class Article(Book):
-    uid = core.SimpleField('ИД', insert_after='auth')
-    auth = core.SimpleField('Author')
-    izdat = core.SimpleField('Издательство', insert_before='auth',
-                             minOccurs=0)
+    uid = SimpleField('ИД', insert_after='auth')
+    auth = SimpleField('Author')
+    izdat = SimpleField('Издательство', insert_before='auth',
+                        minOccurs=0)
 
     class Meta:
         root = 'Статья'
@@ -98,12 +99,12 @@ def test_all_fields():
 
 
 def test_nested():
-    class Doc(core.Schema):
-        author = core.CharField('author', max_length=100)
-        chapter = core.ComplexField(
+    class Doc(Schema):
+        author = CharField('author', max_length=100)
+        chapter = ComplexField(
             'chapter',
-            title=core.SimpleField('title'),
-            p=core.SimpleField('p', maxOccurs='unbounded'),
+            title=SimpleField('title'),
+            p=SimpleField('p', maxOccurs='unbounded'),
             minOccurs=0,
             maxOccurs='unbounded',)
 
@@ -122,11 +123,11 @@ def test_nested():
 
 
 def test_interleaved_text():
-    class InterleavedText(core.Schema):
-        text1 = core.IntegerField(is_text=1)
-        elt1 = core.CharField('elt', max_length=1)
-        text2 = core.IntegerField(is_text=1)
-        elt2 = core.CharField('elt', max_length=1)
+    class InterleavedText(Schema):
+        text1 = IntegerField(is_text=1)
+        elt1 = CharField('elt', max_length=1)
+        text2 = IntegerField(is_text=1)
+        elt2 = CharField('elt', max_length=1)
 
         class Meta:
             root = 'inter'
@@ -138,45 +139,45 @@ def test_interleaved_text():
             == '<inter>1<elt>a</elt>2<elt>b</elt></inter>')
 
 
-@raises(core.DefinitionError)
+@raises(DefinitionError)
 def test_bad_inheritance():
-    class GoodSchema(core.Schema):
-        s = core.SimpleField()
+    class GoodSchema(Schema):
+        s = SimpleField()
 
-    class AnotherGoodSchema(core.Schema):
-        s = core.SimpleField()
+    class AnotherGoodSchema(Schema):
+        s = SimpleField()
 
     class BadSchema(GoodSchema, AnotherGoodSchema):
         pass
 
 
-@raises(core.DefinitionError)
+@raises(DefinitionError)
 def test_bad_max_occurs():
-    class BadSchema(core.Schema):
-        s = core.SimpleField(maxOccurs=0)
+    class BadSchema(Schema):
+        s = SimpleField(maxOccurs=0)
 
 
-@raises(core.DefinitionError)
+@raises(DefinitionError)
 def test_bad_max_length():
-    class BadSchema(core.Schema):
-        s = core.CharField()
+    class BadSchema(Schema):
+        s = CharField()
 
 
-@raises(core.DefinitionError)
+@raises(DefinitionError)
 def test_bad_precision():
-    class BadSchema(core.Schema):
-        s = core.DecimalField(max_digits=10)
+    class BadSchema(Schema):
+        s = DecimalField(max_digits=10)
 
 
-@raises(core.DefinitionError)
+@raises(DefinitionError)
 def test_bad_max_digits():
-    class BadSchema(core.Schema):
-        s = core.DecimalField(decimal_places=2)
+    class BadSchema(Schema):
+        s = DecimalField(decimal_places=2)
 
 
 def test_decimal():
-    class GoodDecimal(core.Schema):
-        num = core.DecimalField(is_text=1, max_digits=3, decimal_places=2)
+    class GoodDecimal(Schema):
+        num = DecimalField(is_text=1, max_digits=3, decimal_places=2)
 
         class Meta:
             root = 'decimal'
@@ -185,10 +186,10 @@ def test_decimal():
     assert unicode(d) == '<decimal>123.50</decimal>'
 
 
-@raises(core.ValidationError)
+@raises(ValidationError)
 def test_missing_fields():
-    class GoodSchema(core.Schema):
-        req = core.IntegerField('reqired')
+    class GoodSchema(Schema):
+        req = IntegerField('reqired')
 
         class Meta:
             root = 'doc'
@@ -197,10 +198,10 @@ def test_missing_fields():
     str(badvalue)
 
 
-@raises(core.SerializationError)
+@raises(SerializationError)
 def test_max_occurs():
-    class GoodSchema(core.Schema):
-        limited = core.IntegerField('reqired', maxOccurs=10)
+    class GoodSchema(Schema):
+        limited = IntegerField('reqired', maxOccurs=10)
 
         class Meta:
             root = 'doc'
@@ -209,10 +210,10 @@ def test_max_occurs():
     str(badvalue)
 
 
-@raises(core.SerializationError)
+@raises(SerializationError)
 def test_min_occurs():
-    class GoodSchema(core.Schema):
-        limited = core.IntegerField('reqired', maxOccurs=10, minOccurs=3)
+    class GoodSchema(Schema):
+        limited = IntegerField('reqired', maxOccurs=10, minOccurs=3)
 
         class Meta:
             root = 'doc'
@@ -221,10 +222,10 @@ def test_min_occurs():
     str(badvalue)
 
 
-@raises(core.ValidationError)
+@raises(ValidationError)
 def test_decimal_valid():
-    class GoodDecimal(core.Schema):
-        num = core.DecimalField(max_digits=3, decimal_places=2)
+    class GoodDecimal(Schema):
+        num = DecimalField(max_digits=3, decimal_places=2)
 
         class Meta:
             root = 'decimal'
@@ -233,13 +234,13 @@ def test_decimal_valid():
 
 
 def test_empty_list():
-    class Cont(core.Schema):
-        optional = core.ComplexField(
+    class Cont(Schema):
+        optional = ComplexField(
             'opt',
             minOccurs=0,
             maxOccurs='unbounded',
 
-            att=core.SimpleField('@att', minOccurs=0))
+            att=SimpleField('@att', minOccurs=0))
 
         class Meta:
             root = 'containter'
@@ -248,10 +249,10 @@ def test_empty_list():
     str(c)
 
 
-@raises(core.ValidationError)
+@raises(ValidationError)
 def test_missing_element():
-    class GoodSchema(core.Schema):
-        num = core.ComplexField('num', val=core.IntegerField())
+    class GoodSchema(Schema):
+        num = ComplexField('num', val=IntegerField())
 
         class Meta:
             root = 'item'
@@ -259,10 +260,10 @@ def test_missing_element():
     GoodSchema.load('<item></item>')
 
 
-@raises(core.ValidationError)
+@raises(ValidationError)
 def test_non_empty():
-    class GoodSchema(core.Schema):
-        empty = core.ComplexField('empty')
+    class GoodSchema(Schema):
+        empty = ComplexField('empty')
 
         class Meta:
             root = 'item'
@@ -296,13 +297,13 @@ def test_bool():
 
 
 def test_new_syntax():
-    class newsch(core.Schema):
-        f1 = core.SimpleField(default='f1')
-        f2 = core.ComplexField(
-            f1=core.ComplexField(
-                f1=core.SimpleField(default="f2.f1.f1"),
-                f2=core.SimpleField(default="f2.f1.f2")),
-            f2=core.SimpleField(default="f2.f2"),)
+    class newsch(Schema):
+        f1 = SimpleField(default='f1')
+        f2 = ComplexField(
+            f1=ComplexField(
+                f1=SimpleField(default="f2.f1.f1"),
+                f2=SimpleField(default="f2.f1.f2")),
+            f2=SimpleField(default="f2.f2"),)
 
         class Meta:
             pretty_print = 1
@@ -321,12 +322,12 @@ def test_new_syntax():
 
 
 def test_repr():
-    class A(core.Schema):
-        a = core.IntegerField()
-        b = core.ComplexField(
-            c=core.IntegerField(),
-            d=core.IntegerField(),
-            e=core.ComplexField(f=core.CharField(max_length=3, is_attribute=False))
+    class A(Schema):
+        a = IntegerField()
+        b = ComplexField(
+            c=IntegerField(),
+            d=IntegerField(),
+            e=ComplexField(f=CharField(max_length=3, is_attribute=False))
         )
 
     a = A()

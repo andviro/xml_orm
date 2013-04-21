@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 from uuid import uuid4
-from .. import core
+from ..core import Schema
+from ..util import Zipped
+from ..fields import *
 from .util import ContainerUtil
 
 '''
@@ -203,15 +205,15 @@ _reverse_doctype_map = dict(
     (k, dict((v, k) for (k, v) in v.items())) for (k, v) in _doc_type_map.items())
 
 
-class Sender(core.Schema):
+class Sender(Schema):
     ''' XML-дескриптор отправителя
     '''
     # Идентификатор абонента или спецоператора
-    uid = core.SimpleField('@идентификаторСубъекта')
+    uid = SimpleField('@идентификаторСубъекта')
 
     # Тип отправителя, значение по умолчанию устанавливается на основе
     # идентификатора отправителя
-    type = core.SimpleField('@типСубъекта', getter='get_type',
+    type = SimpleField('@типСубъекта', getter='get_type',
                             setter='set_type')
 
     def get_type(self):
@@ -247,32 +249,32 @@ class Receiver(Sender):
         root = 'получатель'
 
 
-class Document(core.Schema):
+class Document(Schema):
     """Дескриптор документа.
 
     """
     # атрибуты документа
-    type_code = core.CharField('@кодТипаДокумента', max_length=2,)
-    type = core.SimpleField('@типДокумента')
-    content_type = core.SimpleField('@типСодержимого')
-    compressed = core.BooleanField('@сжат')
-    encrypted = core.BooleanField('@зашифрован')
-    uid = core.SimpleField('@идентификаторДокумента')
-    orig_filename = core.SimpleField('@исходноеИмяФайла', minOccurs=0)
+    type_code = CharField('@кодТипаДокумента', max_length=2,)
+    type = SimpleField('@типДокумента')
+    content_type = SimpleField('@типСодержимого')
+    compressed = BooleanField('@сжат')
+    encrypted = BooleanField('@зашифрован')
+    uid = SimpleField('@идентификаторДокумента')
+    orig_filename = SimpleField('@исходноеИмяФайла', minOccurs=0)
 
     # содержимое
-    content = core.ComplexField('содержимое',
+    content = ComplexField('содержимое',
                                 minOccurs=0,
 
-                                filename=core.SimpleField('@имяФайла')
+                                filename=SimpleField('@имяФайла')
                                 )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = core.ComplexField('подпись',
+    signature = ComplexField('подпись',
                                   minOccurs=0,
                                   maxOccurs='unbounded',
 
-                                  role=core.SimpleField('@роль'),
-                                  filename=core.SimpleField('@имяФайла'),
+                                  role=SimpleField('@роль'),
+                                  filename=SimpleField('@имяФайла'),
                                   )
 
     def __init__(self, *args, **nargs):
@@ -286,29 +288,29 @@ class Document(core.Schema):
         root = 'документ'
 
 
-class TransInfo(core.Schema):
+class TransInfo(Schema):
     """ XML-дескриптор контейнера.
 
     """
-    version = core.SimpleField('@версияФормата', default="ФНС:1.0")
-    doc_code = core.CharField('@кодТипаДокументооборота', max_length=2)
-    doc_type = core.SimpleField('@типДокументооборота')
-    trans_code = core.CharField('@кодТипаТранзакции', max_length=2)
-    transaction = core.SimpleField('@типТранзакции')
-    uid = core.SimpleField('@идентификаторДокументооборота')
-    soft_version = core.SimpleField('@ВерсПрог', minOccurs=0)
-    sender = core.ComplexField(Sender)
-    sos = core.ComplexField(SOS, minOccurs=0)
-    receiver = core.ComplexField(Receiver)
-    extra = core.RawField('ДопСв', minOccurs=0)
+    version = SimpleField('@версияФормата', default="ФНС:1.0")
+    doc_code = CharField('@кодТипаДокументооборота', max_length=2)
+    doc_type = SimpleField('@типДокументооборота')
+    trans_code = CharField('@кодТипаТранзакции', max_length=2)
+    transaction = SimpleField('@типТранзакции')
+    uid = SimpleField('@идентификаторДокументооборота')
+    soft_version = SimpleField('@ВерсПрог', minOccurs=0)
+    sender = ComplexField(Sender)
+    sos = ComplexField(SOS, minOccurs=0)
+    receiver = ComplexField(Receiver)
+    extra = RawField('ДопСв', minOccurs=0)
     # документы представляются в виде списка
-    doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    doc = ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = 'ТрансИнф'
 
 
-class ContainerFNS(core.Zipped, ContainerUtil, TransInfo):
+class ContainerFNS(Zipped, ContainerUtil, TransInfo):
     """Docstring for ContainerFNS """
 
     protocol = 7
