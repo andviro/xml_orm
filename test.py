@@ -2,70 +2,72 @@
 from xml_orm import core
 from nose.tools import raises
 
+basestring = str
+unicode = str
 
 class Document(core.Schema):
-    uid = core.IntegerField(u'ИД')
+    uid = core.IntegerField('ИД')
     abzats = core.SimpleField(is_text=1, minOccurs=0)
-    name = core.CharField(u'ИмяФайла', max_length=255)
+    name = core.CharField('ИмяФайла', max_length=255)
 
     class Meta:
-        root = u'Документ'
-        namespace = u'http://www.example.com/ns2'
+        root = 'Документ'
+        namespace = 'http://www.example.com/ns2'
         encoding = 'cp1251'
 
 
 class Author(core.Schema):
-    name = core.SimpleField(u'Имя')
-    surname = core.SimpleField(u'Фамилия')
-    is_poet = core.BooleanField(u'Поэт')
+    name = core.SimpleField('Имя')
+    surname = core.SimpleField('Фамилия')
+    is_poet = core.BooleanField('Поэт')
 
     class Meta:
-        root = u'Автор'
+        root = 'Автор'
 
 
 class Signature(core.Schema):
-    uid = core.CharField(u'@ИД', max_length=32, qualify=True)
-    probability = core.FloatField(u'Вероятность')
+    uid = core.CharField('@ИД', max_length=32, qualify=True)
+    probability = core.FloatField('Вероятность')
     surname = core.SimpleField(is_text=1)
 
     class Meta:
-        root = u'Подпись'
-        namespace = u'http://www.example.com/signature'
+        root = 'Подпись'
+        namespace = 'http://www.example.com/signature'
 
 
 class Book(core.Schema):
-    uid = core.CharField(u'@ИД', max_length=32)
+    uid = core.CharField('@ИД', max_length=32)
     auth = core.ComplexField(Author)
     doc = core.ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
     signer = core.ComplexField(Signature, minOccurs=0)
-    price = core.DecimalField(u'Цена', decimal_places=2, max_digits=10)
+    price = core.DecimalField('Цена', decimal_places=2, max_digits=10)
 
     class Meta:
-        root = u'Книга'
-        namespace = u'http://www.example.com/ns1'
+        root = 'Книга'
+        namespace = 'http://www.example.com/ns1'
 
 
 class Article(Book):
-    uid = core.SimpleField(u'ИД', insert_after='auth')
-    auth = core.SimpleField(u'Author')
-    izdat = core.SimpleField(u'Издательство', insert_before='auth',
+    uid = core.SimpleField('ИД', insert_after='auth')
+    auth = core.SimpleField('Author')
+    izdat = core.SimpleField('Издательство', insert_before='auth',
                              minOccurs=0)
 
     class Meta:
-        root = u'Статья'
-        namespace = u'http://www.example.com/ns1'
-        encoding = u'utf-8'
+        root = 'Статья'
+        namespace = 'http://www.example.com/ns1'
+        encoding = 'utf-8'
         pretty_print = True
 
 
 def test_all_fields():
-    a = Article(uid=1, auth=u'Иван')
-    a.izdat = u'Мурзилка'
+    a = Article(uid=1, auth='Иван')
+    a.izdat = 'Мурзилка'
     a.price = 1.3
-    a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
+    a.doc.append(a.Doc(uid=1, name='xxx', abzats='абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
-    a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
-    test_xml = u'''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
+    a.signer = a.Signer(surname='Большой начальник', uid=100, probability=0.4)
+    test_xml = '''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
   <Издательство>Мурзилка</Издательство>
   <Author>Иван</Author>
   <ИД>1</ИД>
@@ -84,6 +86,7 @@ def test_all_fields():
 </Статья>
     '''
     b = Article.load(test_xml)
+    print(str(a))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
 
@@ -103,10 +106,11 @@ def test_nested():
             pretty_print = True
 
     d = Doc(author='Ivan Petrov')
-    for i in range(1, 4):
+    for i in range(1, 2):
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    #print(d)
     d2 = Doc.load(str(d))
     assert str(d2) == str(d)
 
@@ -123,7 +127,9 @@ def test_interleaved_text():
             pretty_print = True
 
     it = InterleavedText(text1='1', elt1='a', text2='2', elt2='b')
-    assert unicode(it).strip() == u'<inter>1<elt>a</elt>2<elt>b</elt></inter>'
+    it2 = InterleavedText.load('<inter>1<elt>a</elt>2<elt>b</elt></inter>')
+    assert (unicode(it).strip() == unicode(it2).strip()
+            == '<inter>1<elt>a</elt>2<elt>b</elt></inter>')
 
 
 @raises(core.DefinitionError)
@@ -170,7 +176,7 @@ def test_decimal():
             root = 'decimal'
 
     d = GoodDecimal(num=123.5)
-    assert unicode(d) == u'<decimal>123.50</decimal>'
+    assert unicode(d) == '<decimal>123.50</decimal>'
 
 
 @raises(core.ValidationError)
@@ -217,7 +223,7 @@ def test_decimal_valid():
         class Meta:
             root = 'decimal'
 
-    GoodDecimal.load(u'<decimal>abcdef</decimal>')
+    GoodDecimal.load('<decimal>abcdef</decimal>')
 
 
 def test_empty_list():
@@ -244,7 +250,7 @@ def test_missing_element():
         class Meta:
             root = 'item'
 
-    GoodSchema.load(u'<item></item>')
+    GoodSchema.load('<item></item>')
 
 
 @raises(core.ValidationError)
@@ -255,7 +261,7 @@ def test_non_empty():
         class Meta:
             root = 'item'
 
-    GoodSchema.load(u'<item><empty>1</empty></item>')
+    GoodSchema.load('<item><empty>1</empty></item>')
 
 
 @raises(ValueError)
@@ -266,7 +272,7 @@ def test_max_length():
 
 @raises(ValueError)
 def test_float():
-    d = Signature(surname=u'Большой начальник', uid=100, probability="asldkasjd")
+    d = Signature(surname='Большой начальник', uid=100, probability="asldkasjd")
     str(d)
 
 
@@ -280,7 +286,7 @@ def test_bool():
     a = Author(name='monty',
                surname='python',
                is_poet=False)
-    assert u'false' in unicode(a)
+    assert 'false' in unicode(a)
 
 
 def test_new_syntax():
@@ -296,7 +302,7 @@ def test_new_syntax():
             pretty_print = 1
 
     a = newsch(f2=newsch.F2(f1=newsch.F2.F1()))
-    print unicode(a)
+    print(a)
     b = newsch.load('''
 <newsch f1="f1">
   <f2 xmlns="" f2="f2.f2">
@@ -322,7 +328,7 @@ def test_repr():
     a.b = A.B()
     a.b.c = 1
     a.b.d = 2
-    a.b.e = A.B.E(f=u"3")
-    assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f=u'3')))"
+    a.b.e = A.B.E(f="3")
+    assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
     b = eval(repr(a), {}, locals())
-    assert unicode(b) == u'<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'
+    assert str(b) == '<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'

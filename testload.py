@@ -6,20 +6,20 @@ import glob
 import os
 from hashlib import md5
 from zipfile import ZipFile
-from lxml import etree
+from xml.etree import ElementTree as etree
 
 
 def hash_xml(root, sig):
-    sig.update(root.tag)
+    sig.update(root.tag.encode('utf-8'))
     for name in sorted(root.attrib):
-        sig.update(name)
-        sig.update(root.attrib[name])
+        sig.update(name.encode('utf-8'))
+        sig.update(root.attrib[name].encode('utf-8'))
 
     if root.text is not None:
-        sig.update(root.text)
+        sig.update(root.text.strip().encode('utf-8'))
 
     if root.tail is not None:
-        sig.update(root.tail)
+        sig.update(root.tail.strip().encode('utf-8'))
 
     for c in root.getchildren():
         hash_xml(c, sig)
@@ -31,13 +31,12 @@ def hash_zip(fn):
     z = ZipFile(fn)
     names = sorted(z.namelist())
     for n in names:
-        res.update(n)
+        res.update(n.encode('utf-8'))
         if n != 'packageDescription.xml':
             res.update(z.read(n))
         else:
-            parser = etree.XMLParser(remove_blank_text=True)
-            t = etree.fromstring(z.read(n), parser)
-            hash_xml(t, res)
+            t = etree.parse(z.open(n))
+            hash_xml(t.getroot(), res)
     return res.hexdigest()
 
 
@@ -45,13 +44,11 @@ def test_load_save():
     for fn in glob.iglob('testcases/*.zip'):
         sig = hash_zip(fn)
         pkg = autoload(fn)
-        print fn
+        print(fn)
         assert pkg is not None
         pkg.package = 'test.zip'
         pkg.save()
         sig2 = hash_zip(pkg.package)
+        print(sig, sig2)
         os.unlink(pkg.package)
         assert sig == sig2
-
-if __name__ == "__main__":
-    test_load_save()

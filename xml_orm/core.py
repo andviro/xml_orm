@@ -8,8 +8,25 @@ except ImportError:
 
 from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
-from cStringIO import StringIO
+from io import BytesIO
 import decimal
+import re
+
+
+_ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
+
+basestring = str
+unicode = str
+
+def _extract_ns(root):
+    """@todo: Docstring for _extract_ns
+
+    :root: @todo
+    :returns: @todo
+
+    """
+    nsobj = _ns_pattern.match(root.tag)
+    return nsobj.group('ns') if nsobj else None
 
 
 class XML_ORM_Error(Exception):
@@ -29,7 +46,7 @@ class SerializationError(XML_ORM_Error):
 
 
 class _SortedEntry(object):
-    n = 0L
+    n = 0
 
     def __init__(self):
         self.sort_weight = _SortedEntry.n
@@ -66,7 +83,7 @@ class _Stack(list):
 
 
 class SimpleField(_SortedEntry):
-    u'''Базовый класс для полей в контейнере
+    '''Базовый класс для полей в контейнере
 
     '''
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
@@ -87,20 +104,20 @@ class SimpleField(_SortedEntry):
         self.name = None
         self.tag = tag
         if is_attribute and is_text:
-            raise DefinitionError(u"Field can't be both attribute and text data")
+            raise DefinitionError("Field can't be both attribute and text data")
 
         self.is_attribute = is_attribute
 
         self.is_text = is_text
 
         if self.tag is not None and self.is_text:
-            raise DefinitionError(u"Text stored field can't have tag name")
+            raise DefinitionError("Text stored field can't have tag name")
 
         if tag and tag.startswith('@'):
             if self.is_attribute is None:
                 self.is_attribute = True
             elif not self.is_attribute:
-                raise DefinitionError(u"Field tag contradicts with is_attribute parameter")
+                raise DefinitionError("Field tag contradicts with is_attribute parameter")
             self.tag = tag[1:]
 
         self.is_attribute = (tag is None
@@ -117,7 +134,7 @@ class SimpleField(_SortedEntry):
         self.setter = setter
         self.minOccurs = minOccurs
         if maxOccurs == 0:
-            raise DefinitionError(u"Field maxOccurs can't be 0")
+            raise DefinitionError("Field maxOccurs can't be 0")
         self.maxOccurs = maxOccurs
         self.insert_after = insert_after
         self.insert_before = insert_before
@@ -207,10 +224,7 @@ class SimpleField(_SortedEntry):
                 ns = getattr(self.schema._meta, 'namespace', None) if ns is None else ns
             else:
                 ns = ''
-            nsmap = {None: ns} if ns is not None else None
-            if ns:
-                nsmap['t'] = ns
-            res = etree.Element(self.tag, nsmap=nsmap)
+            res = etree.Element(self.qname(ns) if ns else self.tag)
             res.text = val
             return res
 
@@ -254,7 +268,7 @@ class BooleanField(SimpleField):
 
 
 class CharField(SimpleField):
-    u'''
+    '''
     Строковое поле с ограничением максимальной длины
 
     '''
@@ -269,26 +283,26 @@ class CharField(SimpleField):
         """
         max_length = kwargs.pop('max_length', None)
         if max_length is None:
-            raise DefinitionError(u'CharField requires max_length')
+            raise DefinitionError('CharField requires max_length')
         self.max_length = max_length
         super(CharField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
         if len(value) > self.max_length:
-            raise ValidationError(u'String too long for CharField "{0}"'
+            raise ValidationError('String too long for CharField "{0}"'
                                   .format(self.name))
         return value
 
     def to_string(self, val):
         s = unicode(val)
         if len(s) > self.max_length:
-            raise ValueError(u'String too long for CharField "{0}"'
+            raise ValueError('String too long for CharField "{0}"'
                              .format(self.name))
         return s
 
 
 class FloatField(SimpleField):
-    u'''Принимает любой объект, который можно конвертировать во float.
+    '''Принимает любой объект, который можно конвертировать во float.
 
     '''
 
@@ -300,7 +314,7 @@ class FloatField(SimpleField):
 
 
 class DateField(SimpleField):
-    u'''Принимает объект типа datetime.date
+    '''Принимает объект типа datetime.date
 
     '''
 
@@ -312,7 +326,7 @@ class DateField(SimpleField):
 
 
 class IntegerField(SimpleField):
-    u'''Принимает любой объект, который можно конвертировать в int.
+    '''Принимает любой объект, который можно конвертировать в int.
 
     '''
 
@@ -324,7 +338,7 @@ class IntegerField(SimpleField):
 
 
 class DecimalField(SimpleField):
-    u'''Хранит значения типа Decimal
+    '''Хранит значения типа Decimal
 
     '''
 
@@ -340,12 +354,12 @@ class DecimalField(SimpleField):
         """
         max_digits = kwargs.pop('max_digits', None)
         if max_digits is None:
-            raise DefinitionError(u'DecimalField requires max_digits')
+            raise DefinitionError('DecimalField requires max_digits')
         self.max_digits = max_digits
 
         decimal_places = kwargs.pop('decimal_places', None)
         if decimal_places is None:
-            raise DefinitionError(u'DecimalField requires decimal_places')
+            raise DefinitionError('DecimalField requires decimal_places')
         self.decimal_places = decimal_places
 
         super(DecimalField, self).__init__(*args, **kwargs)
@@ -364,7 +378,7 @@ class DecimalField(SimpleField):
             context.prec = self.max_digits
             return unicode(val.quantize(decimal.Decimal(".1") ** self.decimal_places, context=context))
         else:
-            return u"{0:.{1}f}".format(val, self.decimal_places)
+            return "{0:.{1}f}".format(val, self.decimal_places)
 
 
 class ComplexField(SimpleField):
@@ -381,7 +395,7 @@ class ComplexField(SimpleField):
         """
         if 'is_attribute' in kwargs or 'is_text' in kwargs:
             if kwargs['is_attribute'] or kwargs['is_text']:
-                raise DefinitionError(u"ComplexField can't be text or attribute")
+                raise DefinitionError("ComplexField can't be text or attribute")
 
         self.cls = cls
         self._fields, newargs = {}, {}
@@ -449,7 +463,7 @@ def _find(lst, name):
 
 
 class _MetaSchema(type):
-    u''''Метакласс для XML-содержимого контейнера
+    ''''Метакласс для XML-содержимого контейнера
 
     '''
     def __new__(cls, name, bases, attrs):
@@ -459,7 +473,7 @@ class _MetaSchema(type):
         """
         parents = [b for b in bases if isinstance(b, _MetaSchema)]
         if len(parents) > 1:
-            raise DefinitionError(u'Only one parent schema allowed')
+            raise DefinitionError('Only one parent schema allowed')
         new_sup = super(_MetaSchema, cls).__new__
         new_cls = new_sup(cls, name, bases, {})
 
@@ -476,8 +490,7 @@ class _MetaSchema(type):
                          ._fields if isinstance(f, SimpleField)]
         else:
             new_attrs = []
-        for name, attr in sorted(attrs.items(),
-                                 key=lambda (x, y): getattr(y, 'sort_weight', None)):
+        for name, attr in sorted(attrs.items(), key=lambda x: getattr(x[1], 'sort_weight', 0)):
             if isinstance(attr, SimpleField):
                 pos = _find(new_attrs, name)
                 if pos != -1:
@@ -503,9 +516,7 @@ class _MetaSchema(type):
         return new_cls
 
 
-class Schema(object):
-    __metaclass__ = _MetaSchema
-
+class Schema(metaclass=_MetaSchema):
     def __init__(self, **kwargs):
         """@todo: Docstring for __init__
 
@@ -541,17 +552,20 @@ class Schema(object):
                 root = etree.fromstring(root)
             except:
                 root = etree.parse(root).getroot()
+        elif isinstance(root, bytes):
+            cont = BytesIO(root)
+            root = etree.parse(cont).getroot()
         elif hasattr(root, 'read'):
             root = etree.parse(root).getroot()
 
         if active_ns is not None:
             ns = active_ns
         else:
-            ns = getattr(cls._meta, 'namespace', etree.QName(root).namespace)
+            ns = getattr(cls._meta, 'namespace', _extract_ns(root))
         qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
-        if etree.QName(root) != qn:
-            raise ValidationError(u'Unexpected element "{0}"'
-                                  .format(etree.QName(root)))
+        if etree.QName(root.tag) != qn:
+            raise ValidationError('Unexpected element "{0}"'
+                                  .format(etree.QName(root.tag)))
         new_elt = cls()
         stack = _Stack(root)
         for field in new_elt._fields:
@@ -563,38 +577,36 @@ class Schema(object):
                 res = [field.to_python(x) for x in val]
 
             if field.minOccurs > len(res):
-                raise ValidationError(u'Too few values for field "{0}"'
+                raise ValidationError('Too few values for field "{0}"'
                                       .format(field.name))
             elif field.maxOccurs != 'unbounded' and len(val) > field.maxOccurs:
-                raise ValidationError(u'Too many values for field "{0}"'
+                raise ValidationError('Too many values for field "{0}"'
                                       .format(field.name))
             if field.maxOccurs != 1:
                 setattr(new_elt, field.name, res)
             elif len(res):
                 setattr(new_elt, field.name, res[0])
         if len(stack):
-            print stack
-            raise ValidationError(u'Unexpected {0} nodes after last field'
+            raise ValidationError('Unexpected {0} nodes after last field'
                                   .format(len(stack)))
         return new_elt
 
     def xml(self, ns=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
-        nsmap = {None: ns} if ns is not None else None
+        root = etree.Element(self._meta.root)
         if ns:
-            nsmap['t'] = ns
-        root = etree.Element(self._meta.root, nsmap=nsmap)
+            root.set('xmlns', ns)
         prev_elt = None
         for field in self._fields:
             if not hasattr(self, field.name):
                 if field.minOccurs != 0:
-                    raise ValidationError(u'Required field "{0}" not assigned'
+                    raise ValidationError('Required field "{0}" not assigned'
                                           .format(field.name))
                 else:
                     continue
             value = getattr(self, field.name)
             if not field.check_len(value):
-                raise SerializationError(u'Invalid occurence count {0} for field "{1}"'
+                raise SerializationError('Invalid occurence count {0} for field "{1}"'
                                          .format(len(value), field.name))
             if isinstance(value, list):
                 value = [field.xml(v) for v in value]
@@ -613,22 +625,17 @@ class Schema(object):
                 root.extend(value)
         return root
 
-    def __unicode__(self):
-        return unicode(etree.tostring(self.xml(),
-                                      encoding=unicode,
-                                      pretty_print=getattr(self._meta,
-                                                           'pretty_print',
-                                                           False)))
+    def __str__(self):
+        return unicode(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8')
 
     def __repr__(self):
         fieldrepr = ', '.join(x.repr(getattr(self, x.name)) for x in
                               self._fields if hasattr(self, x.name))
         return '{0}({1})'.format(self.__class__.__name__, fieldrepr)
 
-    def __str__(self):
-        return etree.tostring(self.xml(),
-                              encoding=getattr(self._meta, 'encoding', 'utf-8'),
-                              pretty_print=getattr(self._meta, 'pretty_print', False))
+    def __bytes__(self):
+        enc = getattr(self._meta, 'encoding', 'utf-8')
+        return etree.tostring(self.xml(), encoding=enc)
 
     def __enter__(self):
         return self
@@ -654,12 +661,8 @@ class Zipped(object):
 
     @classmethod
     def load(cls, package):
-        try:
-            zf = ZipFile(StringIO(package))
-            has_filename = False
-        except BadZipfile:
-            zf = ZipFile(package)
-            has_filename = isinstance(package, basestring)
+        zf = ZipFile(package)
+        has_filename = isinstance(package, basestring)
         entry = getattr(cls._meta, 'entry', '')
         root = zf.read(entry)
         res = super(Zipped, cls).load(root)
@@ -669,7 +672,7 @@ class Zipped(object):
         return res
 
     def write(self, name, content):
-        u''' Запись файла в ZIP-контейнер.
+        ''' Запись файла в ZIP-контейнер.
 
         :name: Имя файла в архиве
         :content: Байтовая строка с содержимым
@@ -681,7 +684,7 @@ class Zipped(object):
         self._storage[name] = content
 
     def read(self, name):
-        u''' Извлечение файла из ZIP-контейнера.
+        ''' Извлечение файла из ZIP-контейнера.
 
         :name: Имя файла в архиве
         :returns: Байтовая строка с содержимым
@@ -703,11 +706,11 @@ class Zipped(object):
         :returns: @todo
 
         """
-        storage = StringIO()
+        storage = BytesIO()
         entry = getattr(self._meta, 'entry', None)
         with ZipFile(storage, 'w') as zf:
             if entry:
-                zf.writestr(entry, str(self))
+                zf.writestr(entry, bytes(self))
             if self._old_zip:
                 for n in self._old_zip.namelist():
                     if n not in self._storage and n != entry:
