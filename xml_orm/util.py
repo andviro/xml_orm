@@ -29,8 +29,18 @@ class Zipped(object):
 
     @classmethod
     def load(cls, package):
-        zf = ZipFile(package)
-        has_filename = isinstance(package, basestring)
+        has_filename = False
+        if isinstance(package, (basestring, bytes)):
+            try:
+                zf = ZipFile(package)
+                has_filename = True
+            except:
+                zf = ZipFile(BytesIO(package))
+        elif hasattr(package, 'read'):
+            zf = ZipFile(package)
+        else:
+            raise IOError('Could not load package from {0}'.format(package))
+
         entry = getattr(cls._meta, 'entry', '')
         root = zf.read(entry)
         res = super(Zipped, cls).load(root)

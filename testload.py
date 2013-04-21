@@ -43,7 +43,7 @@ def hash_zip(fn):
 def test_load_save():
     for fn in glob.iglob('testcases/*.zip'):
         sig = hash_zip(fn)
-        pkg = autoload(fn)
+        pkg = autoload(fn, open(fn, 'rb').read())
         print(fn)
         assert pkg is not None
         pkg.package = 'test.zip'
