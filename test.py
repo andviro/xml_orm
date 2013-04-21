@@ -1,9 +1,15 @@
 # coding: utf-8
 from xml_orm import core
 from nose.tools import raises
+import sys
 
-basestring = str
-unicode = str
+if sys.version_info >= (3,):
+    basestring = str
+    unicode = str
+else:
+    basestring = basestring
+    unicode = unicode
+
 
 class Document(core.Schema):
     uid = core.IntegerField('ИД')
@@ -110,7 +116,7 @@ def test_nested():
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
-    #print(d)
+    # print(d)
     d2 = Doc.load(str(d))
     assert str(d2) == str(d)
 

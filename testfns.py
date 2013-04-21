@@ -5,7 +5,15 @@ from uuid import uuid4
 from xml_orm.schemas.fns import ContainerFNS
 from xml_orm.schemas.auto import autoload
 import os
+import sys
 from zipfile import ZipFile
+
+if sys.version_info >= (3,):
+    basestring = str
+    unicode = str
+else:
+    basestring = basestring
+    unicode = unicode
 
 ti = None
 extra_package = ''

@@ -1,22 +1,27 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-try:
-    from lxml import etree
-except ImportError:
-    from xml.etree import ElementTree as etree
+from xml.etree import ElementTree as etree
 
 from copy import deepcopy
 from zipfile import ZipFile, BadZipfile
 from io import BytesIO
 import decimal
 import re
+import sys
 
 
 _ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
 
-basestring = str
-unicode = str
+if sys.version_info >= (3,):
+    basestring = str
+    unicode = str
+    bytes = bytes
+else:
+    basestring = basestring
+    unicode = unicode
+    bytes = str
+
 
 def _extract_ns(root):
     """@todo: Docstring for _extract_ns
@@ -146,7 +151,7 @@ class SimpleField(_SortedEntry):
 
     def qname(self, ns=None):
         ns = getattr(self.schema._meta, 'namespace', '') if ns is None else ns
-        return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
+        return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else unicode(self.tag)
 
     def to_python(self, value):
         return value
@@ -516,7 +521,7 @@ class _MetaSchema(type):
         return new_cls
 
 
-class Schema(metaclass=_MetaSchema):
+class Schema(_MetaSchema("BaseSchema", (object,), {})):
     def __init__(self, **kwargs):
         """@todo: Docstring for __init__
 
