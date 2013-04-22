@@ -42,12 +42,20 @@ class Zipped(object):
             raise IOError('Could not load package from {0}'.format(package))
 
         entry = getattr(cls._meta, 'entry', '')
-        root = zf.read(entry)
-        res = super(Zipped, cls).load(root)
-        res._old_zip = zf
+        storage = dict((k, zf.read(k)) for k in zf.namelist())
+        zf.close()
+        newcls = super(Zipped, cls)
+        if entry in storage:
+            res = newcls.load(storage[entry])
+        else:
+            res = newcls()
+        res._storage = storage
         if has_filename:
             res.package = package
         return res
+
+    def namelist(self):
+        return self._storage.keys()
 
     def write(self, name, content):
         ''' Запись файла в ZIP-контейнер.
@@ -68,9 +76,16 @@ class Zipped(object):
         :returns: Байтовая строка с содержимым
 
         '''
-        if name in self._storage:
-            return self._storage[name]
-        return self._old_zip.read(name)
+        return self._storage[name]
+
+    def unlink(self, name):
+        ''' Удаление файла из ZIP-контейнера.
+
+        :name: Имя файла в архиве
+        :returns: None
+
+        '''
+        del self._storage[name]
 
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
@@ -89,10 +104,7 @@ class Zipped(object):
         with ZipFile(storage, 'w') as zf:
             if entry:
                 zf.writestr(entry, bytes(self))
-            if self._old_zip:
-                for n in self._old_zip.namelist():
-                    if n not in self._storage and n != entry:
-                        zf.writestr(n, self._old_zip.read(n))
             for n in self._storage:
-                zf.writestr(n, self._storage[n])
+                if n != entry:
+                    zf.writestr(n, self._storage[n])
         return storage.getvalue()

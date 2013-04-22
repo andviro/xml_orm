@@ -28,15 +28,16 @@ def hash_xml(root, sig):
 
 def hash_zip(fn):
     res = md5()
-    z = ZipFile(fn)
-    names = sorted(z.namelist())
-    for n in names:
-        res.update(n.encode('utf-8'))
-        if n != 'packageDescription.xml':
-            res.update(z.read(n))
-        else:
-            t = etree.parse(z.open(n))
-            hash_xml(t.getroot(), res)
+    with ZipFile(fn) as z:
+        names = sorted(z.namelist())
+        for n in names:
+            res.update(n.encode('utf-8'))
+            if n != 'packageDescription.xml':
+                res.update(z.read(n))
+            else:
+                t = etree.parse(z.open(n))
+                hash_xml(t.getroot(), res)
+    z.close()
     return res.hexdigest()
 
 
@@ -50,5 +51,6 @@ def test_load_save():
         pkg.save()
         sig2 = hash_zip(pkg.package)
         print(sig, sig2)
+        print(pkg.package)
         os.unlink(pkg.package)
         assert sig == sig2

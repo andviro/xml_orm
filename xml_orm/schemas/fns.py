@@ -323,9 +323,23 @@ class ContainerFNS(Zipped, ContainerUtil, TransInfo):
         self.file_uid = uuid4().hex
         super(ContainerFNS, self).__init__(*args, **nargs)
 
+    def post_init(self):
+        # при создании нового экземпляра контейнера ФНС можно не указать либо
+        # `doc_code` либо `doc_type`. Незаполненное поле будет присвоено
+        # автоматически в соответствии с типом документооборота.
+
+        if not hasattr(self, 'doc_code') and hasattr(self, 'doc_type'):
+            self.doc_code = _reverse_edo_map[self.doc_type][0]
+        elif hasattr(self, 'doc_code') and not hasattr(self, 'doc_type'):
+            self.doc_type = _edo_type_map[self.doc_code][0]
+
     def add_file(self, *args, **nargs):
         doc = super(ContainerFNS, self).add_file(*args, **nargs)
-        doc.type_code = _reverse_doctype_map[self.trans_code][doc.type]
+        if doc.type.isdigit():
+            doc.type_code = doc.type
+            doc.type = _doc_type_map[self.trans_code][doc.type_code]
+        else:
+            doc.type_code = _reverse_doctype_map[self.trans_code][doc.type]
 
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть

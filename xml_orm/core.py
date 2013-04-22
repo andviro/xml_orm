@@ -172,6 +172,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         :returns: @todo
 
         """
+        new_elt = cls()
         if isinstance(root, unicode):
             try:
                 root = etree.fromstring(root.encode('utf-8'))
@@ -186,12 +187,11 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         if active_ns is not None:
             ns = active_ns
         else:
-            ns = getattr(cls._meta, 'namespace', _extract_ns(root))
-        qn = etree.QName(ns, cls._meta.root) if ns else cls._meta.root
+            ns = getattr(new_elt._meta, 'namespace', _extract_ns(root))
+        qn = etree.QName(ns, new_elt._meta.root) if ns else new_elt._meta.root
         if etree.QName(root.tag) != qn:
             raise ValidationError('Unexpected element "{0}"'
                                   .format(etree.QName(root.tag)))
-        new_elt = cls()
         stack = _Stack(root)
         for field in new_elt._fields:
             val = field.load(stack, ns)

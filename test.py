@@ -1,15 +1,20 @@
 # coding: utf-8
 from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError
-from xml_orm.fields import BooleanField, IntegerField, SimpleField, CharField, FloatField, ComplexField, DecimalField
+from xml_orm.util import Zipped
+from xml_orm.fields import *
 from nose.tools import raises
+from zipfile import ZipFile
 import sys
+from tempfile import mkstemp
 
 if sys.version_info >= (3,):
     basestring = str
     unicode = str
+    bytes = bytes
 else:
     basestring = basestring
     unicode = unicode
+    bytes = str
 
 
 class Document(Schema):
@@ -340,3 +345,32 @@ def test_repr():
     assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
     b = eval(repr(a), {}, locals())
     assert str(b) == '<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'
+
+
+def test_zipped():
+    tmpzip = mkstemp('.zip')[1]
+
+    class A(Zipped, Schema):
+        a = IntegerField()
+        b = ComplexField(
+            c=IntegerField(),
+            d=IntegerField(),
+            e=ComplexField(f=CharField(max_length=3, is_attribute=False))
+        )
+
+        class Meta:
+            entry = 'content.xml'
+
+    with ZipFile(tmpzip, 'w') as zf:
+        zf.writestr('content.xml', b'<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>')
+        zf.writestr('file1.bin', b'content 1')
+        zf.writestr('file2.bin', b'content 2')
+
+    cont1 = A.load(tmpzip)
+    assert sorted(cont1.namelist()) == ['content.xml', 'file1.bin', 'file2.bin']
+    cont1.unlink('file1.bin')
+    cont1.save()
+    cont2 = A.load(open(tmpzip, 'rb'))
+    cont2.write('file3.bin', b'content 3')
+    assert sorted(cont2.namelist()) == ['content.xml', 'file2.bin', 'file3.bin']
+    cont2.save()

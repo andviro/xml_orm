@@ -13,6 +13,10 @@ class ContainerUtil(object):
 
         """
         super(ContainerUtil, self).__init__(*args, **kwargs)
+        self.post_init()
+
+    def post_init(self):
+        pass
 
     def add_file(self, filename, doc_type, content_type, content=None,
                  compressed=False, encrypted=False, signature=None, sig_role=None):
