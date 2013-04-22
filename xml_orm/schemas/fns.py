@@ -340,6 +340,7 @@ class ContainerFNS(Zipped, ContainerUtil, TransInfo):
             doc.type = _doc_type_map[self.trans_code][doc.type_code]
         else:
             doc.type_code = _reverse_doctype_map[self.trans_code][doc.type]
+        return doc
 
     class Meta:
         # имя файла с дескриптором в архиве. При наследовании может быть
