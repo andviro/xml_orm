@@ -6,7 +6,6 @@ from io import BytesIO
 from copy import deepcopy
 import re
 import sys
-from .errors import DefinitionError, ValidationError, SerializationError
 
 
 _ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
@@ -22,6 +21,22 @@ else:
 
 
 class CoreField(object):
+    pass
+
+
+class XML_ORM_Error(Exception):
+    pass
+
+
+class DefinitionError(XML_ORM_Error):
+    pass
+
+
+class ValidationError(XML_ORM_Error):
+    pass
+
+
+class SerializationError(XML_ORM_Error):
     pass
 
 
