@@ -13,68 +13,68 @@ else:
 
 
 class Document(Schema):
-    uid = IntegerField('ИД')
+    uid = IntegerField(u'ИД')
     abzats = SimpleField(is_text=1, minOccurs=0)
-    name = CharField('ИмяФайла', max_length=255)
+    name = CharField(u'ИмяФайла', max_length=255)
 
     class Meta:
-        root = 'Документ'
+        root = u'Документ'
         namespace = 'http://www.example.com/ns2'
         encoding = 'cp1251'
 
 
 class Author(Schema):
-    name = SimpleField('Имя')
-    surname = SimpleField('Фамилия')
-    is_poet = BooleanField('Поэт')
+    name = SimpleField(u'Имя')
+    surname = SimpleField(u'Фамилия')
+    is_poet = BooleanField(u'Поэт')
 
     class Meta:
-        root = 'Автор'
+        root = u'Автор'
 
 
 class Signature(Schema):
-    uid = CharField('@ИД', max_length=32, qualify=True)
-    probability = FloatField('Вероятность')
+    uid = CharField(u'@ИД', max_length=32, qualify=True)
+    probability = FloatField(u'Вероятность')
     surname = SimpleField(is_text=1)
 
     class Meta:
-        root = 'Подпись'
+        root = u'Подпись'
         namespace = 'http://www.example.com/signature'
 
 
 class Book(Schema):
-    uid = CharField('@ИД', max_length=32)
+    uid = CharField(u'@ИД', max_length=32)
     auth = ComplexField(Author)
     doc = ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
     signer = ComplexField(Signature, minOccurs=0)
-    price = DecimalField('Цена', decimal_places=2, max_digits=10)
+    price = DecimalField(u'Цена', decimal_places=2, max_digits=10)
 
     class Meta:
-        root = 'Книга'
+        root = u'Книга'
         namespace = 'http://www.example.com/ns1'
 
 
 class Article(Book):
-    uid = SimpleField('ИД', insert_after='auth')
-    auth = SimpleField('Author')
-    izdat = SimpleField('Издательство', insert_before='auth',
+    uid = SimpleField(u'ИД', insert_after='auth')
+    auth = SimpleField(u'Author')
+    izdat = SimpleField(u'Издательство', insert_before='auth',
                         minOccurs=0)
 
     class Meta:
-        root = 'Статья'
+        root = u'Статья'
         namespace = 'http://www.example.com/ns1'
         encoding = 'utf-8'
         pretty_print = True
 
 
 def test_all_fields():
-    a = Article(uid=1, auth='Иван')
-    a.izdat = 'Мурзилка'
+    a = Article(uid=1, auth=u'Иван')
+    a.izdat = u'Мурзилка'
     a.price = 1.3
-    a.doc.append(a.Doc(uid=1, name='xxx', abzats='абзац'))
+    a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
-    a.signer = a.Signer(surname='Большой начальник', uid=100, probability=0.4)
-    test_xml = '''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
+    a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
+    test_xml = u'''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
   <Издательство>Мурзилка</Издательство>
   <Author>Иван</Author>
   <ИД>1</ИД>
@@ -93,7 +93,7 @@ def test_all_fields():
 </Статья>
     '''
     b = Article.load(test_xml)
-    print(str(a))
+    print(unicode(a))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
 
@@ -279,7 +279,7 @@ def test_max_length():
 
 @raises(ValueError)
 def test_float():
-    d = Signature(surname='Большой начальник', uid=100, probability="asldkasjd")
+    d = Signature(surname=u'Большой начальник', uid=100, probability="asldkasjd")
     str(d)
 
 
@@ -293,6 +293,7 @@ def test_bool():
     a = Author(name='monty',
                surname='python',
                is_poet=False)
+    print(a.xml().tag)
     assert 'false' in unicode(a)
 
 

@@ -27,19 +27,19 @@ def setup_module():
     # неприсвоенные поля без умолчаний бросят исключение при попытке вызвать
     # .save() или преобразовать контейнер в XML.
     ti = ContainerFNS(uid=uuid4().hex,
-                      doc_type='Декларация',
+                      doc_type=u'Декларация',
                       doc_code='01',
                       trans_code='01',
-                      transaction="ДекларацияНП",
+                      transaction=u"ДекларацияНП",
                       )
     ti.sender = ContainerFNS.Sender(uid=uuid4().hex)
     ti.receiver = ti.Receiver(uid=uuid4().hex)
-    ti.sos = ti.Sos(uid='2AE')
+    ti.sos = ti.Sos(uid=u'2AE')
     for n in range(3):
-        ti.add_file(filename='some{0}.xml'.format(n), doc_type='описание',
+        ti.add_file(filename='some{0}.xml'.format(n), doc_type=u'описание',
                     content_type='xml', content='test content {0}'.format(n),
                     signature='test sign content {0}'.format(n),
-                    sig_role='спецоператор')
+                    sig_role=u'спецоператор')
     # сохранение сработает, только если контейнер сформирован корректно
     ti.save()
 

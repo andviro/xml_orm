@@ -157,9 +157,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         :returns: @todo
 
         """
-        if isinstance(root, basestring):
+        if isinstance(root, unicode):
             try:
-                root = etree.fromstring(root)
+                root = etree.fromstring(root.encode('utf-8'))
             except:
                 root = etree.parse(root).getroot()
         elif isinstance(root, bytes):
@@ -203,7 +203,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
 
     def xml(self, ns=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
-        root = etree.Element(self._meta.root)
+        root = etree.Element(unicode(self._meta.root))
         if ns:
             root.set('xmlns', ns)
         prev_elt = None
@@ -225,9 +225,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
 
             if field.is_text:
                 if prev_elt is None:
-                    root.text = ' '.join(value)
+                    root.text = unicode(' '.join(value))
                 else:
-                    prev_elt.tail = ' '.join(value)
+                    prev_elt.tail = unicode(' '.join(value))
             elif field.is_attribute:
                 root.set(field.qname(ns), ' '.join(value))
             else:
@@ -236,6 +236,14 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         return root
 
     def __str__(self):
+        if sys.version_info >= (3,):
+            return str(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8',
+                       'replace')
+        else:
+            enc = getattr(self._meta, 'encoding', 'utf-8')
+            return etree.tostring(self.xml(), encoding=enc)
+
+    def __unicode__(self):
         return unicode(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8')
 
     def __repr__(self):
