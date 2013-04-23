@@ -53,7 +53,7 @@ class Zipped(object):
             res = newcls()
         res._storage = storage
         if has_filename:
-            res.basedir, res.package = os.path.split(package)
+            res.basedir, res.package = os.path.split(os.path.abspath(package))
         return res
 
     def namelist(self):
