@@ -4,6 +4,7 @@
 from zipfile import ZipFile
 from io import BytesIO
 import sys
+import os
 
 if sys.version_info >= (3,):
     basestring = str
@@ -25,6 +26,7 @@ class Zipped(object):
         self._storage = {}
         self._old_zip = None
         self.package = None
+        self.basedir = None
         super(Zipped, self).__init__(*args, **kwargs)
 
     @classmethod
@@ -51,7 +53,7 @@ class Zipped(object):
             res = newcls()
         res._storage = storage
         if has_filename:
-            res.package = package
+            res.basedir, res.package = os.path.split(package)
         return res
 
     def namelist(self):
@@ -89,9 +91,10 @@ class Zipped(object):
 
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
+        self.basedir = self.basedir or os.getcwd()
         if not self.package:
             return
-        open(self.package, 'wb').write(self.raw_content)
+        open(os.path.join(self.basedir, self.package), 'wb').write(self.raw_content)
 
     @property
     def raw_content(self):
