@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from xml.etree import ElementTree as etree
+try:
+    from lxml import etree
+    _has_schema = True
+except ImportError:
+    from xml.etree import ElementTree as etree
+    _has_schema = False
+
 from io import BytesIO
 from copy import deepcopy
 import re
@@ -107,6 +113,9 @@ class _MetaSchema(type):
         meta_attrs = dict(base_meta.__dict__) if base_meta else {}
         if new_meta:
             meta_attrs.update(new_meta.__dict__)
+        if 'schema' in meta_attrs and _has_schema:
+            compiled_xsd = etree.XMLSchema(etree.parse(meta_attrs['schema']))
+            meta_attrs['compiled_xsd'] = compiled_xsd
         new_cls._meta = type('Meta', (object,), meta_attrs)
 
         new_cls._fields = []
@@ -183,6 +192,10 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             root = etree.parse(cont).getroot()
         elif hasattr(root, 'read'):
             root = etree.parse(root).getroot()
+
+        xsd = getattr(cls._meta, 'compiled_xsd', None)
+        if xsd:
+            xsd.assert_(root)
 
         if active_ns is not None:
             ns = active_ns
@@ -277,7 +290,10 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         self.save()
 
     def save(self):
-        pass
+        xsd = getattr(self._meta, 'compiled_xsd', None)
+        if xsd:
+            xsd.assert_(str(self))
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()

@@ -6,6 +6,7 @@ from ..util import Zipped
 from ..fields import *
 from .util import ContainerUtil
 from uuid import uuid4
+from io import StringIO
 
 
 u'''
@@ -40,6 +41,76 @@ _edo_type_map = {
         '1': u'уведомлениеОбОшибке',
     })
 }
+
+
+_stat_schema = StringIO(u'''<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="UUID">
+    <xs:restriction base="xs:string"> <xs:pattern value="[a-fA-F0-9]{32}"/> </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ТипВерсииФормата">
+    <xs:restriction base="xs:string"> <xs:pattern value="Стат:1.0"/> </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="пакет">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="отправитель" minOccurs="1" maxOccurs="1">
+          <xs:complexType>
+            <xs:attribute name="идентификаторСубъекта" type="xs:string" use="required" />
+            <xs:attribute name="типСубъекта" type="xs:string" use="required" />
+            <xs:attribute name="названиеОрганизации" type="xs:string" use="optional" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="системаОтправителя" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:attribute name="идентификаторСубъекта" type="xs:string" use="required" />
+                <xs:attribute name="типСубъекта" type="xs:string" use="required" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="получатель" minOccurs="1" maxOccurs="1">
+          <xs:complexType>
+                <xs:attribute name="идентификаторСубъекта" type="xs:string" use="required" />
+                <xs:attribute name="типСубъекта" type="xs:string" use="required" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="системаПолучателя" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:attribute name="идентификаторСубъекта" type="xs:string" use="required" />
+                <xs:attribute name="типСубъекта" type="xs:string" use="required" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="расширения" type="xs:anyType" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="документ" minOccurs="1" maxOccurs="unbounded">
+          <xs:complexType>
+                <xs:sequence>
+              <xs:element name="содержимое" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                  <xs:attribute name="имяФайла" type="xs:string" use="required" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="подпись" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:attribute name="имяФайла" type="xs:string" use="required" />
+                  <xs:attribute name="роль" type="xs:string" use="required" />
+                </xs:complexType>
+              </xs:element>
+                </xs:sequence>
+                <xs:attribute name="типДокумента" type="xs:string" use="required" />
+                <xs:attribute name="типСодержимого" type="xs:string" use="required" />
+                <xs:attribute name="сжат" type="xs:boolean" use="required" />
+                <xs:attribute name="зашифрован" type="xs:boolean" use="required" />
+                <xs:attribute name="идентификаторДокумента" type="UUID" use="required" />
+                <xs:attribute name="исходноеИмяФайла" type="xs:string" use="optional" />
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="версияФормата" type="ТипВерсииФормата" use="required" />
+      <xs:attribute name="типДокументооборота" type="xs:string" use="required" />
+      <xs:attribute name="типТранзакции" type="xs:string" use="required" />
+      <xs:attribute name="идентификаторДокументооборота" type="UUID" use="required" />
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+''')
 
 _reverse_edo_map = dict(
     (v[0], (k, dict((v, k) for (k, v) in v[1].items()))) for (k, v) in _edo_type_map.items())
@@ -102,6 +173,7 @@ class StatDocument(Schema):
 class StatInfo(Schema):
     class Meta:
         root = u'пакет'
+        schema = _stat_schema
 
     version = SimpleField(u'@версияФормата', default=u'Стат:1.0')
     uid = SimpleField(u'@идентификаторДокументооборота')

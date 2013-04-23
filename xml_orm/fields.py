@@ -3,7 +3,10 @@
 import decimal
 import sys
 from .core import DefinitionError, ValidationError, Schema, CoreField
-from xml.etree import ElementTree as etree
+try:
+    from lxml import etree
+except ImportError:
+    from xml.etree import ElementTree as etree
 
 if sys.version_info >= (3,):
     basestring = str

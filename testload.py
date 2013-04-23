@@ -6,7 +6,10 @@ import glob
 import os
 from hashlib import md5
 from zipfile import ZipFile
-from xml.etree import ElementTree as etree
+try:
+    from lxml import etree
+except ImportError:
+    from xml.etree import ElementTree as etree
 
 
 def hash_xml(root, sig):
@@ -44,8 +47,8 @@ def hash_zip(fn):
 def test_load_save():
     for fn in glob.iglob('testcases/*.zip'):
         sig = hash_zip(fn)
-        pkg = autoload(fn, open(fn, 'rb').read())
         print(fn)
+        pkg = autoload(fn, open(fn, 'rb').read())
         assert pkg is not None
         pkg.package = 'test.zip'
         pkg.save()
@@ -54,3 +57,5 @@ def test_load_save():
         print(pkg.package)
         os.unlink(pkg.package)
         assert sig == sig2
+
+test_load_save()
