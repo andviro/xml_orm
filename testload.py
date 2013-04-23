@@ -52,10 +52,10 @@ def test_load_save():
         assert pkg is not None
         pkg.package = 'test.zip'
         pkg.save()
-        sig2 = hash_zip(pkg.package)
+        sig2 = hash_zip(os.path.join(pkg.basedir, pkg.package))
         print(sig, sig2)
         print(pkg.package)
-        os.unlink(pkg.package)
+        os.unlink(os.path.join(pkg.basedir, pkg.package))
         assert sig == sig2
 
 test_load_save()

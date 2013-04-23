@@ -27,17 +27,18 @@ def autoload(fn, content=None):
         файла на диске по имени :fn:.
 
     '''
-    base = os.path.basename(fn)
-    if base.startswith('FNS_'):
+    base, fn = os.path.split(os.path.abspath(fn))
+    if fn.startswith('FNS_'):
         res = ContainerFNS.load(content or fn)
-    elif base.startswith('EDI_'):
+    elif fn.startswith('EDI_'):
         res = ContainerEDI.load(content or fn)
-    elif re.match(r'\d{3}-\d{3}(-\d{6})?_.*', base):
+    elif re.match(r'\d{3}-\d{3}(-\d{6})?_.*', fn):
         res = ContainerPFR.load(content or fn)
-    elif base.lower().startswith('stat'):
+    elif fn.lower().startswith('stat'):
         res = ContainerStat.load(content or fn)
     else:
         res = None
     if res:
         res.package = fn
+        res.basedir = base
     return res
