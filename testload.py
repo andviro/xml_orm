@@ -57,5 +57,3 @@ def test_load_save():
         print(pkg.package)
         os.unlink(os.path.join(pkg.basedir, pkg.package))
         assert sig == sig2
-
-test_load_save()
