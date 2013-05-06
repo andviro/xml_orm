@@ -6,6 +6,7 @@ from nose.tools import raises
 from zipfile import ZipFile
 import sys
 from tempfile import mkstemp
+from datetime import datetime
 
 if sys.version_info >= (3,):
     basestring = str
@@ -374,3 +375,16 @@ def test_zipped():
     cont2.write('file3.bin', b'content 3')
     assert sorted(cont2.namelist()) == ['content.xml', 'file2.bin', 'file3.bin']
     cont2.save()
+
+
+def test_datetime():
+    class Dates(Schema):
+        iso = DateTimeField()
+        dot_date = DateTimeField(format=u'%d.%m.%Y')
+        only_time = DateTimeField(format=u'%H:%M:%S')
+
+    d = Dates(iso=datetime.now(), dot_date=datetime.now(),
+              only_time=datetime.now())
+    d1 = Dates.load(str(d))
+
+    assert str(d) == str(d1)

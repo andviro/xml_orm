@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import decimal
 import sys
+from datetime import datetime
 from .core import DefinitionError, ValidationError, Schema, CoreField
 try:
     from lxml import etree
@@ -257,16 +258,26 @@ class FloatField(SimpleField):
         return unicode(float(val))
 
 
-class DateField(SimpleField):
-    '''Принимает объект типа datetime.date
+class DateTimeField(SimpleField):
+    '''
+    Поле для хранения даты и/или времени
 
     '''
+    def __init__(self, *args, **kwargs):
+        """@todo: Docstring for __init__
+
+        :format: формат для чтения/вывода в строку.
+            По умолчанию "YYYY-MM-DDTHH:MM:SS"
+
+        """
+        self.format = kwargs.pop('format', u'%Y-%m-%dT%H:%M:%S')
+        super(DateTimeField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
-        return float(value)
+        return datetime.strptime(value, self.format)
 
     def to_string(self, val):
-        return unicode(val.isoformat())
+        return val.strftime(self.format)
 
 
 class IntegerField(SimpleField):
