@@ -160,7 +160,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         """
         if not hasattr(self._meta, 'root'):
             setattr(self._meta, 'root', self.__class__.__name__)
-        pairs = zip(self._fields, args)
+        pairs = list(zip(self._fields, args))
         if len(pairs) < len(args):
             raise DefinitionError('Extra positional arguments in constructor')
 
@@ -278,8 +278,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             if _has_schema:
                 res = etree.tostring(self.xml(), encoding=enc, xml_declaration=True)
             else:
-                res = b'<?xml version="1.0" encoding="{0}" ?>\n{1}'.format(
-                    enc, etree.tostring(self.xml(), encoding=enc))
+                res = (bytes('<?xml version="1.0" encoding="{0}" ?>\n'.format(enc)
+                             .encode('ascii'))
+                       + etree.tostring(self.xml(), encoding=enc))
         else:
             res = etree.tostring(self.xml(), encoding=enc)
         return res
