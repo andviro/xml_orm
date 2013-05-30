@@ -101,7 +101,7 @@ def test_all_fields():
     '''
     b = Article.load(test_xml)
     print(bytes(a).decode('utf-8'))
-    #print(unicode(a))
+    # print(unicode(a))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
 
@@ -409,3 +409,56 @@ def test_pavel():
     operator = Operator()
     conforg = ConfirmOrganisation(operator=operator)
     print(conforg)
+
+
+def test_positional():
+    class A(Schema):
+        field1 = SimpleField()
+        field2 = SimpleField()
+        field3 = SimpleField()
+
+    a = A(1, 2, field3=3)
+    assert a.field1 == 1 and a.field2 == 2 and a.field3 == 3
+
+
+@raises(DefinitionError)
+def test_positional_extra_args():
+    class A(Schema):
+        field1 = SimpleField()
+        field2 = SimpleField()
+        field3 = SimpleField()
+
+    a = A(1, 2, 3, 4, field3=3)
+    assert a.field1 == 1 and a.field2 == 2 and a.field3 == 3
+
+
+def test_pattern():
+    class A(Schema):
+        field1 = SimpleField(pattern=r'\d{10}')
+
+    a = A('1234567891')
+    assert a.field1 == '1234567891'
+
+
+@raises(ValueError)
+def test_pattern_bad():
+    class A(Schema):
+        field1 = SimpleField(pattern=r'\d{10}')
+
+    print A('asldkjasdlk')
+
+
+def test_pattern_validation():
+    class A(Schema):
+        field1 = SimpleField(pattern=r'\d{10}')
+
+    a = A.load('<A field1="1234567891"/>')
+    assert a.field1 == '1234567891'
+
+
+@raises(ValidationError)
+def test_pattern_validation_bad():
+    class A(Schema):
+        field1 = SimpleField(pattern=r'\d{10}')
+
+    A.load('<A field1="adsasdas"/>')

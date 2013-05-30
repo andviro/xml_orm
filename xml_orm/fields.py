@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 import decimal
 import sys
+import re
 from datetime import datetime
 from .core import DefinitionError, ValidationError, Schema, CoreField
 try:
@@ -38,7 +39,9 @@ class SimpleField(_SortedEntry, CoreField):
                  is_attribute=None,
                  is_text=False,
                  insert_before=None,
-                 insert_after=None, **kwargs):
+                 insert_after=None,
+                 pattern=None,
+                 **kwargs):
         """@todo: Docstring for __init__
 
         :tag: @todo
@@ -54,6 +57,8 @@ class SimpleField(_SortedEntry, CoreField):
         self.is_attribute = is_attribute
 
         self.is_text = is_text
+
+        self.pattern = pattern
 
         if self.tag is not None and self.is_text:
             raise DefinitionError("Text stored field can't have tag name")
@@ -94,7 +99,16 @@ class SimpleField(_SortedEntry, CoreField):
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else unicode(self.tag)
 
     def to_python(self, value):
+        if self.pattern and not re.match(self.pattern, value):
+            raise ValidationError('Pattern for CharField "{0}" does not match'
+                                  .format(self.name))
         return value
+
+    def to_string(self, value):
+        if self.pattern and not re.match(self.pattern, value):
+            raise ValueError('Pattern for CharField "{0}" does not match'
+                                  .format(self.name))
+        return unicode(value)
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -111,9 +125,6 @@ class SimpleField(_SortedEntry, CoreField):
 
     def repr(self, val):
         return '{0}={1!r}'.format(self.name, val)
-
-    def to_string(self, val):
-        return unicode(val)
 
     def load(self, *args, **nargs):
         if self.is_attribute:
@@ -236,14 +247,14 @@ class CharField(SimpleField):
         if len(value) > self.max_length:
             raise ValidationError('String too long for CharField "{0}"'
                                   .format(self.name))
-        return value
+        return super(CharField, self).to_python(value)
 
-    def to_string(self, val):
-        s = unicode(val)
+    def to_string(self, value):
+        s = unicode(value)
         if len(s) > self.max_length:
             raise ValueError('String too long for CharField "{0}"'
                              .format(self.name))
-        return s
+        return super(CharField, self).to_string(value)
 
 
 class FloatField(SimpleField):

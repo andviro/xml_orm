@@ -151,7 +151,7 @@ class _MetaSchema(type):
 
 
 class Schema(_MetaSchema("BaseSchema", (object,), {})):
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         """@todo: Docstring for __init__
 
         :**kwargs: @todo
@@ -160,7 +160,14 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         """
         if not hasattr(self._meta, 'root'):
             setattr(self._meta, 'root', self.__class__.__name__)
-        for field in self._fields:
+        pairs = zip(self._fields, args)
+        if len(pairs) < len(args):
+            raise DefinitionError('Extra positional arguments in constructor')
+
+        for field, value in pairs:
+            setattr(self, field.name, value)
+
+        for field in self._fields[len(pairs):]:
             value = None
             if field.name in kwargs:
                 value = kwargs.pop(field.name)
@@ -170,6 +177,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                 value = []
             if value is not None:
                 setattr(self, field.name, value)
+
         for name, value in kwargs.items():
             setattr(self, name, value)
 
@@ -270,7 +278,8 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             if _has_schema:
                 res = etree.tostring(self.xml(), encoding=enc, xml_declaration=True)
             else:
-                res = b'<?xml version="1.0" encoding="{0}" ?>\n{1}'.format(enc, etree.tostring(self.xml(), encoding=enc))
+                res = b'<?xml version="1.0" encoding="{0}" ?>\n{1}'.format(
+                    enc, etree.tostring(self.xml(), encoding=enc))
         else:
             res = etree.tostring(self.xml(), encoding=enc)
         return res
