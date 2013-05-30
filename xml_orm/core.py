@@ -270,7 +270,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             if _has_schema:
                 res = etree.tostring(self.xml(), encoding=enc, xml_declaration=True)
             else:
-                res = b'?<xml encoding="{0}" ?>\n{1}'.format(enc, etree.tostring(self.xml(), encoding=enc))
+                res = b'<?xml version="1.0" encoding="{0}" ?>\n{1}'.format(enc, etree.tostring(self.xml(), encoding=enc))
         else:
             res = etree.tostring(self.xml(), encoding=enc)
         return res

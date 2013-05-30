@@ -100,8 +100,8 @@ def test_all_fields():
 </Статья>
     '''
     b = Article.load(test_xml)
-    print(unicode(a))
     print(bytes(a).decode('utf-8'))
+    #print(unicode(a))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
 
