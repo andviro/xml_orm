@@ -100,15 +100,16 @@ class SimpleField(_SortedEntry, CoreField):
 
     def to_python(self, value):
         if self.pattern and not re.match(self.pattern, value):
-            raise ValidationError('Pattern for CharField "{0}" does not match'
+            raise ValidationError('Pattern for field "{0}" does not match'
                                   .format(self.name))
         return value
 
     def to_string(self, value):
-        if self.pattern and not re.match(self.pattern, value):
-            raise ValueError('Pattern for CharField "{0}" does not match'
-                                  .format(self.name))
-        return unicode(value)
+        res = unicode(value)
+        if self.pattern and not re.match(self.pattern, res):
+            raise ValueError('Pattern for field "{0}" does not match'
+                             .format(self.name))
+        return res
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
