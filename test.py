@@ -438,13 +438,12 @@ def test_pattern():
         field2 = FloatField(pattern=r'0\.\d{3}')
         field3 = IntegerField(pattern=r'2.5')
         field4 = DateTimeField(format=u'%H:%M:%S', pattern=r'12:30:.*')
+        field5 = CharField(pattern=r'a.*', max_length=18)
 
     a = A('1234567891', 0.123, 245)
     a.field4 = time(hour=12, minute=30)
-    assert (a.field1 == '1234567891'
-            and a.field2 == 0.123
-            and a.field3 == 245
-            and a.field4 == time(hour=12, minute=30))
+    a.field5 = 'abrashvabra'
+    assert str(a)
 
 
 @raises(ValueError)
@@ -453,6 +452,14 @@ def test_pattern_bad():
         field1 = SimpleField(pattern=r'\d{10}')
 
     unicode(A('asldkjasdlk'))
+
+
+@raises(ValueError)
+def test_pattern_bad3():
+    class A(Schema):
+        field1 = CharField(pattern=r'a.*', max_length=18)
+
+    unicode(A('bslasdk'))
 
 
 @raises(ValueError)
