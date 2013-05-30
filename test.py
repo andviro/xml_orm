@@ -6,7 +6,7 @@ from nose.tools import raises
 from zipfile import ZipFile
 import sys
 from tempfile import mkstemp
-from datetime import datetime
+from datetime import datetime, time
 
 if sys.version_info >= (3,):
     basestring = str
@@ -435,9 +435,16 @@ def test_positional_extra_args():
 def test_pattern():
     class A(Schema):
         field1 = SimpleField(pattern=r'\d{10}')
+        field2 = FloatField(pattern=r'0\.\d{3}')
+        field3 = IntegerField(pattern=r'2.5')
+        field4 = DateTimeField(format=u'%H:%M:%S', pattern=r'12:30:.*')
 
-    a = A('1234567891')
-    assert a.field1 == '1234567891'
+    a = A('1234567891', 0.123, 245)
+    a.field4 = time(hour=12, minute=30)
+    assert (a.field1 == '1234567891'
+            and a.field2 == 0.123
+            and a.field3 == 245
+            and a.field4 == time(hour=12, minute=30))
 
 
 @raises(ValueError)
@@ -445,7 +452,17 @@ def test_pattern_bad():
     class A(Schema):
         field1 = SimpleField(pattern=r'\d{10}')
 
-    print A('asldkjasdlk')
+    unicode(A('asldkjasdlk'))
+
+
+@raises(ValueError)
+def test_pattern_bad2():
+    class A(Schema):
+        field1 = DateTimeField(format=u'%H:%M:%S', pattern=r'12:30:.*')
+
+    a = A()
+    a.field1 = time(hour=19, minute=40)
+    unicode(a)
 
 
 def test_pattern_validation():

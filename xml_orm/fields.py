@@ -217,11 +217,12 @@ class RawField(SimpleField):
 class BooleanField(SimpleField):
     """Docstring for BooleanField """
 
-    def to_string(self, val):
-        return unicode(bool(val)).lower()
+    def to_string(self, value):
+        res = unicode(bool(value)).lower()
+        return super(BooleanField, self).to_string(res)
 
     def to_python(self, value):
-        return value == 'true'
+        return super(BooleanField, self).to_python(value) == 'true'
 
 
 class CharField(SimpleField):
@@ -251,11 +252,11 @@ class CharField(SimpleField):
         return super(CharField, self).to_python(value)
 
     def to_string(self, value):
-        s = unicode(value)
+        s = super(CharField, self).to_string(value)
         if len(s) > self.max_length:
             raise ValueError('String too long for CharField "{0}"'
                              .format(self.name))
-        return super(CharField, self).to_string(value)
+        return s
 
 
 class FloatField(SimpleField):
@@ -264,10 +265,10 @@ class FloatField(SimpleField):
     '''
 
     def to_python(self, value):
-        return float(value)
+        return float(super(FloatField, self).to_python(value))
 
     def to_string(self, val):
-        return unicode(float(val))
+        return super(FloatField, self).to_string(float(val))
 
 
 class DateTimeField(SimpleField):
@@ -286,10 +287,12 @@ class DateTimeField(SimpleField):
         super(DateTimeField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
-        return datetime.strptime(value, self.format)
+        return datetime.strptime(
+            super(DateTimeField, self).to_python(value),
+            self.format)
 
     def to_string(self, val):
-        return val.strftime(self.format)
+        return super(DateTimeField, self).to_string(val.strftime(self.format))
 
 
 class IntegerField(SimpleField):
@@ -298,10 +301,10 @@ class IntegerField(SimpleField):
     '''
 
     def to_python(self, value):
-        return int(value)
+        return int(super(IntegerField, self).to_python(value))
 
     def to_string(self, val):
-        return unicode(int(val))
+        return super(IntegerField, self).to_string(int(val))
 
 
 class DecimalField(SimpleField):
@@ -333,7 +336,7 @@ class DecimalField(SimpleField):
 
     def to_python(self, value):
         try:
-            return decimal.Decimal(value)
+            return decimal.Decimal(super(DecimalField, self).to_python(value))
         except decimal.InvalidOperation as e:
             raise ValidationError(e)
         except:
@@ -343,9 +346,10 @@ class DecimalField(SimpleField):
         if isinstance(val, decimal.Decimal):
             context = decimal.getcontext().copy()
             context.prec = self.max_digits
-            return unicode(val.quantize(decimal.Decimal(".1") ** self.decimal_places, context=context))
+            res = unicode(val.quantize(decimal.Decimal(".1") ** self.decimal_places, context=context))
         else:
-            return "{0:.{1}f}".format(val, self.decimal_places)
+            res = "{0:.{1}f}".format(val, self.decimal_places)
+        return super(DecimalField, self).to_string(res)
 
 
 class ComplexField(SimpleField):
@@ -360,9 +364,11 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        if 'is_attribute' in kwargs or 'is_text' in kwargs:
-            if kwargs['is_attribute'] or kwargs['is_text']:
-                raise DefinitionError("ComplexField can't be text or attribute")
+        if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
+            raise DefinitionError("ComplexField can't be text or attribute")
+
+        if kwargs.get('pattern', None):
+            raise DefinitionError("ComplexField can't have a pattern")
 
         self.cls = cls
         self._fields, newargs = {}, {}
