@@ -263,13 +263,24 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                 root.extend(value)
         return root
 
+    def _make_bytes(self):
+        enc = getattr(self._meta, 'encoding', 'utf-8')
+        force_xmldecl = getattr(self._meta, 'xml_declaration', False)
+        if force_xmldecl:
+            if _has_schema:
+                res = etree.tostring(self.xml(), encoding=enc, xml_declaration=True)
+            else:
+                res = b'?<xml encoding="{0}" ?>\n{1}'.format(enc, etree.tostring(self.xml(), encoding=enc))
+        else:
+            res = etree.tostring(self.xml(), encoding=enc)
+        return res
+
     def __str__(self):
         if sys.version_info >= (3,):
             return str(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8',
                        'replace')
         else:
-            enc = getattr(self._meta, 'encoding', 'utf-8')
-            return etree.tostring(self.xml(), encoding=enc)
+            return self._make_bytes()
 
     def __unicode__(self):
         return unicode(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8')
@@ -280,8 +291,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         return '{0}({1})'.format(self.__class__.__name__, fieldrepr)
 
     def __bytes__(self):
-        enc = getattr(self._meta, 'encoding', 'utf-8')
-        return etree.tostring(self.xml(), encoding=enc)
+        return self._make_bytes()
 
     def __enter__(self):
         return self

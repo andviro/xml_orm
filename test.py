@@ -71,6 +71,7 @@ class Article(Book):
         namespace = 'http://www.example.com/ns1'
         encoding = 'utf-8'
         pretty_print = True
+        xml_declaration = True
 
 
 def test_all_fields():
@@ -100,6 +101,7 @@ def test_all_fields():
     '''
     b = Article.load(test_xml)
     print(unicode(a))
+    print(bytes(a).decode('utf-8'))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
 
@@ -388,3 +390,22 @@ def test_datetime():
     d1 = Dates.load(str(d))
 
     assert str(d) == str(d1)
+
+
+def test_pavel():
+    class Operator(Schema):
+        uid = SimpleField(u'@ИденСОС', min_length=3, max_length=3, default='1AE')
+        name = SimpleField(u'@НаимОрг', min_length=3, max_length=1000, default='ЗАО Калуга Астрал')
+
+        class Meta:
+            root = u'СпецОперат'
+
+    class ConfirmOrganisation(Schema):
+        operator = ComplexField(Operator)
+
+        class Meta:
+            root = u'ОргПодт'
+
+    operator = Operator()
+    conforg = ConfirmOrganisation(operator=operator)
+    print(conforg)
