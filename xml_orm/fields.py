@@ -52,7 +52,8 @@ class SimpleField(_SortedEntry, CoreField):
         self.name = None
         self.tag = tag
         if is_attribute and is_text:
-            raise DefinitionError("Field can't be both attribute and text data")
+            raise DefinitionError(
+                "Field can't be both attribute and text data")
 
         self.is_attribute = is_attribute
 
@@ -67,7 +68,8 @@ class SimpleField(_SortedEntry, CoreField):
             if self.is_attribute is None:
                 self.is_attribute = True
             elif not self.is_attribute:
-                raise DefinitionError("Field tag contradicts with is_attribute parameter")
+                raise DefinitionError(
+                    "Field tag contradicts with is_attribute parameter")
             self.tag = tag[1:]
 
         self.is_attribute = (tag is None
@@ -178,7 +180,8 @@ class SimpleField(_SortedEntry, CoreField):
             return val
         else:
             if self.qualify:
-                ns = getattr(self.schema._meta, 'namespace', None) if ns is None else ns
+                ns = getattr(self.schema._meta,
+                             'namespace', None) if ns is None else ns
             else:
                 ns = ''
             res = etree.Element(self.qname(ns) if ns else self.tag)
@@ -204,8 +207,9 @@ class RawField(SimpleField):
 
         """
         qn = self.qname(ns)
-        return [x for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
-                                            self.maxOccurs)]
+        return [x for x in stack.take_while(
+            lambda x: hasattr(x, 'tag') and x.tag == qn,
+            self.maxOccurs)]
 
     def to_python(self, root):
         return root
@@ -346,10 +350,52 @@ class DecimalField(SimpleField):
         if isinstance(val, decimal.Decimal):
             context = decimal.getcontext().copy()
             context.prec = self.max_digits
-            res = unicode(val.quantize(decimal.Decimal(".1") ** self.decimal_places, context=context))
+            res = unicode(val.quantize(decimal.Decimal(
+                ".1") ** self.decimal_places, context=context))
         else:
             res = "{0:.{1}f}".format(val, self.decimal_places)
         return super(DecimalField, self).to_string(res)
+
+
+class ChoiceField(SimpleField):
+
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
+            raise DefinitionError("ChoiceField can't be text or attribute")
+        kwargs['is_attribute'] = kwargs['is_text'] = False
+
+        self._choices, newargs = {}, {}
+        for k, v in kwargs.items():
+            if isinstance(v, SimpleField):
+                self._choices[k] = v
+            else:
+                newargs[k] = v
+        super(ChoiceField, self).__init__(*args, **newargs)
+
+    def add_to_cls(self, cls, name):
+        super(ChoiceField, self).add_to_cls(cls, name)
+
+        subelt_classes = {}
+        for subname, elt in self._choices.items():
+            if isinstance(elt, ComplexField):
+                if elt.cls is None:
+                    elt.cls = subname
+                if isinstance(elt.cls, basestring):
+                    elt._fields['Meta'] = type('Meta', (object,), {'root': elt.cls})
+                    newname = '{0}.{1}.{2}'.format(cls.__name__,
+                                                   name.capitalize(),
+                                                   subname.capitalize())
+                    elt.cls = type(newname, (Schema,), elt._fields)
+                subelt_classes[subname.capitalize()] = elt.cls
+            else:
+                if elt.tag is None:
+                    elt.tag = subname
+                    if elt.is_attribute or elt.is_text:
+                        raise DefinitionError('Choice {0} must not contain text or attribute members'
+                                              .format(name))
+            newclsname = '{0}.{1}'.format(cls.__name__, name.capitalize())
+            self.cls = type(newclsname, (object, ), subelt_classes)
+            setattr(cls, name.capitalize(), staticmethod(self.cls))
 
 
 class ComplexField(SimpleField):

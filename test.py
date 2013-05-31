@@ -486,3 +486,17 @@ def test_pattern_validation_bad():
         field1 = SimpleField(pattern=r'\d{10}')
 
     A.load('<A field1="adsasdas"/>')
+
+
+def test_choice():
+    class A(Schema):
+        cf = ChoiceField(
+            a=SimpleField(is_attribute=False, is_text=False),
+            b=SimpleField(is_attribute=False, is_text=False),
+            c=ComplexField(),
+        )
+
+    a = A()
+    a.cf = A.Cf.C()
+    print(a)
+    assert 0
