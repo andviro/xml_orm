@@ -13,7 +13,6 @@ from copy import deepcopy
 import re
 import sys
 
-
 _ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
 
 if sys.version_info >= (3,):
@@ -113,6 +112,7 @@ class _MetaSchema(type):
         meta_attrs = dict(base_meta.__dict__) if base_meta else {}
         if new_meta:
             meta_attrs.update(new_meta.__dict__)
+
         if 'schema' in meta_attrs and _has_schema:
             compiled_xsd = etree.XMLSchema(etree.parse(meta_attrs['schema']))
             meta_attrs['compiled_xsd'] = compiled_xsd
@@ -160,7 +160,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         """
         if not hasattr(self._meta, 'root'):
             setattr(self._meta, 'root', self.__class__.__name__)
-        pairs = list(zip(self._fields, args))
+        pairs = list(zip((f for f in self._fields if f.positional), args))
         if len(pairs) < len(args):
             raise DefinitionError('Extra positional arguments in constructor')
 
@@ -214,9 +214,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             raise ValidationError('Unexpected element "{0}"'
                                   .format(etree.QName(root.tag)))
         stack = _Stack(root)
-        for field in new_elt._fields:
-            val = field.load(stack, ns)
-            if not(val) and field.has_default and field.minOccurs > 0:
+        for fld in new_elt._fields:
+            val, field = fld.load(stack, ns)
+            if not len(val) and field.has_default and field.minOccurs > 0:
                 res = (field.default
                        if isinstance(field.default, list) else [field.default])
             else:
@@ -225,13 +225,13 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             if field.minOccurs > len(res):
                 raise ValidationError('Too few values for field "{0}"'
                                       .format(field.name))
-            elif field.maxOccurs != 'unbounded' and len(val) > field.maxOccurs:
+            elif field.maxOccurs != 'unbounded' and len(res) > field.maxOccurs:
                 raise ValidationError('Too many values for field "{0}"'
                                       .format(field.name))
             if field.maxOccurs != 1:
-                setattr(new_elt, field.name, res)
+                fld.set(new_elt, field, res)
             elif len(res):
-                setattr(new_elt, field.name, res[0])
+                fld.set(new_elt, field, res[0])
         if len(stack):
             raise ValidationError('Unexpected {0} nodes after last field'
                                   .format(len(stack)))
@@ -242,33 +242,8 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         root = etree.Element(unicode(self._meta.root))
         if ns:
             root.set('xmlns', ns)
-        prev_elt = None
         for field in self._fields:
-            if not hasattr(self, field.name):
-                if field.minOccurs != 0:
-                    raise ValidationError('Required field "{0}" not assigned'
-                                          .format(field.name))
-                else:
-                    continue
-            value = getattr(self, field.name)
-            if not field.check_len(value):
-                raise SerializationError('Invalid occurence count {0} for field "{1}"'
-                                         .format(len(value), field.name))
-            if isinstance(value, list):
-                value = [field.xml(v) for v in value]
-            else:
-                value = [field.xml(value)]
-
-            if field.is_text:
-                if prev_elt is None:
-                    root.text = unicode(' '.join(value))
-                else:
-                    prev_elt.tail = unicode(' '.join(value))
-            elif field.is_attribute:
-                root.set(field.qname(ns), ' '.join(value))
-            else:
-                prev_elt = value[-1] if len(value) else prev_elt
-                root.extend(value)
+            field.serialize(self, root)
         return root
 
     def _make_bytes(self):
@@ -296,8 +271,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         return unicode(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8')
 
     def __repr__(self):
-        fieldrepr = ', '.join(x.repr(getattr(self, x.name)) for x in
-                              self._fields if hasattr(self, x.name))
+        fieldrepr = ', '.join(x.repr(self) for x in self._fields if x.has(self))
         return '{0}({1})'.format(self.__class__.__name__, fieldrepr)
 
     def __bytes__(self):

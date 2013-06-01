@@ -4,7 +4,8 @@ import decimal
 import sys
 import re
 from datetime import datetime
-from .core import DefinitionError, ValidationError, Schema, CoreField
+from copy import deepcopy
+from .core import DefinitionError, SerializationError, ValidationError, Schema, CoreField
 try:
     from lxml import etree
 except ImportError:
@@ -32,6 +33,8 @@ class SimpleField(_SortedEntry, CoreField):
     '''Базовый класс для полей в контейнере
 
     '''
+    positional = True
+
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
                  qualify=None,
                  getter=None,
@@ -96,6 +99,43 @@ class SimpleField(_SortedEntry, CoreField):
         else:
             self.has_default = False
 
+    def serialize(self, obj, root):
+        if not self.has(obj):
+            if self.minOccurs != 0:
+                raise SerializationError('Required field "{0}" not assigned'
+                                         .format(self.name))
+            else:
+                return
+
+        value, field = self.get(obj)
+        if not field.check_len(value):
+            raise SerializationError('Invalid occurence count {0} for field "{1}"'
+                                     .format(len(value), field.name))
+        if isinstance(value, list):
+            value = [field.xml(v) for v in value]
+        else:
+            value = [field.xml(value)]
+
+        if field.is_text:
+            if not len(root):
+                root.text = unicode(' '.join(value))
+            else:
+                root[-1].tail = unicode(' '.join(value))
+        elif field.is_attribute:
+            ns = root.get('xmlns', None)
+            root.set(field.qname(ns), ' '.join(value))
+        else:
+            root.extend(value)
+
+    def get(self, obj):
+        return getattr(obj, self.name), self
+
+    def set(self, obj, field, value):
+        setattr(obj, field.name, value)
+
+    def has(self, obj):
+        return hasattr(obj, self.name)
+
     def qname(self, ns=None):
         ns = getattr(self.schema._meta, 'namespace', '') if ns is None else ns
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else unicode(self.tag)
@@ -126,8 +166,9 @@ class SimpleField(_SortedEntry, CoreField):
         self.tag = self.tag or name
         cls._fields.append(self)
 
-    def repr(self, val):
-        return '{0}={1!r}'.format(self.name, val)
+    def repr(self, obj):
+        val, field = self.get(obj)
+        return '{0}={1!r}'.format(field.name, val)
 
     def load(self, *args, **nargs):
         if self.is_attribute:
@@ -147,8 +188,12 @@ class SimpleField(_SortedEntry, CoreField):
         """
         val = stack.get(self.qname(ns), None)
         if val is not None and self.maxOccurs != 1:
-            return val.split()
-        return [] if val is None else [val]
+            res = val.split()
+        elif val is None:
+            res = []
+        else:
+            res = [val]
+        return res, self
 
     def _load_text(self, stack, ns):
         """@todo: Docstring for _load_text
@@ -159,7 +204,7 @@ class SimpleField(_SortedEntry, CoreField):
         :returns: @todo
 
         """
-        return stack.take_while(lambda x: isinstance(x, basestring), 1)
+        return stack.take_while(lambda x: isinstance(x, basestring), 1), self
 
     def _load_element(self, stack, ns):
         """@todo: Docstring for _load_element
@@ -172,7 +217,7 @@ class SimpleField(_SortedEntry, CoreField):
         """
         qn = self.qname(ns)
         return [x.text or "" for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
-                                                       self.maxOccurs)]
+                                                       self.maxOccurs)], self
 
     def xml(self, value, ns=None):
         val = self.to_string(value)
@@ -209,7 +254,7 @@ class RawField(SimpleField):
         qn = self.qname(ns)
         return [x for x in stack.take_while(
             lambda x: hasattr(x, 'tag') and x.tag == qn,
-            self.maxOccurs)]
+            self.maxOccurs)], self
 
     def to_python(self, root):
         return root
@@ -357,47 +402,6 @@ class DecimalField(SimpleField):
         return super(DecimalField, self).to_string(res)
 
 
-class ChoiceField(SimpleField):
-
-    def __init__(self, *args, **kwargs):
-        if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
-            raise DefinitionError("ChoiceField can't be text or attribute")
-        kwargs['is_attribute'] = kwargs['is_text'] = False
-
-        self._choices, newargs = {}, {}
-        for k, v in kwargs.items():
-            if isinstance(v, SimpleField):
-                self._choices[k] = v
-            else:
-                newargs[k] = v
-        super(ChoiceField, self).__init__(*args, **newargs)
-
-    def add_to_cls(self, cls, name):
-        super(ChoiceField, self).add_to_cls(cls, name)
-
-        subelt_classes = {}
-        for subname, elt in self._choices.items():
-            if isinstance(elt, ComplexField):
-                if elt.cls is None:
-                    elt.cls = subname
-                if isinstance(elt.cls, basestring):
-                    elt._fields['Meta'] = type('Meta', (object,), {'root': elt.cls})
-                    newname = '{0}.{1}.{2}'.format(cls.__name__,
-                                                   name.capitalize(),
-                                                   subname.capitalize())
-                    elt.cls = type(newname, (Schema,), elt._fields)
-                subelt_classes[subname.capitalize()] = elt.cls
-            else:
-                if elt.tag is None:
-                    elt.tag = subname
-                    if elt.is_attribute or elt.is_text:
-                        raise DefinitionError('Choice {0} must not contain text or attribute members'
-                                              .format(name))
-            newclsname = '{0}.{1}'.format(cls.__name__, name.capitalize())
-            self.cls = type(newclsname, (object, ), subelt_classes)
-            setattr(cls, name.capitalize(), staticmethod(self.cls))
-
-
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
@@ -411,10 +415,12 @@ class ComplexField(SimpleField):
 
         """
         if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
-            raise DefinitionError("ComplexField can't be text or attribute")
+            raise DefinitionError("{0} can't be text or attribute"
+                                  .format(self.__class__.__name__))
 
         if kwargs.get('pattern', None):
-            raise DefinitionError("ComplexField can't have a pattern")
+            raise DefinitionError("{0} can't have a pattern"
+                                  .format(self.__class__.__name__))
 
         self.cls = cls
         self._fields, newargs = {}, {}
@@ -423,10 +429,8 @@ class ComplexField(SimpleField):
                 self._fields[k] = v
             else:
                 newargs[k] = v
+        newargs['is_attribute'] = newargs['is_text '] = False
         super(ComplexField, self).__init__(None, *args, **newargs)
-        q = newargs.get('qualify', None)
-        self.qualify = q is None or q
-        self.is_attribute = self.is_text = False
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -436,19 +440,30 @@ class ComplexField(SimpleField):
         :returns: @todo
 
         """
-        if self.cls is None:
-            self.cls = name
+        self.name = name
 
         if isinstance(self.cls, basestring):
-            self._fields['Meta'] = type('Meta', (object,), {'root': self.cls})
+            root_name = self.cls
+            self.cls = None
+        elif self.cls is None:
+            root_name = name
+        else:
+            root_name = getattr(self.cls._meta, 'root', None)
+
+        self.tag = root_name
+        if not self.cls or len(self._fields):
+            parent = self.cls or Schema
+            self._fields['Meta'] = type('Meta', (object,), {'root': root_name})
             newname = '{0}.{1}'.format(cls.__name__, name.capitalize())
-            self.cls = type(newname, (Schema,), self._fields)
-        self.tag = getattr(self.cls._meta, 'root', None)
+            self.cls = type(newname, (parent, ), self._fields)
 
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(self.cls))
 
     def xml(self, val):
+        if not isinstance(val, self.cls):
+            raise SerializationError('Value for ComplexField {0} must be of class {1}'
+                                     .format(self.name, self.cls.__name__))
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return val.xml(ns=ns)
 
@@ -467,8 +482,40 @@ class ComplexField(SimpleField):
         """
         qn = self.qname(ns)
         return stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
-                                self.maxOccurs)
+                                self.maxOccurs), self
 
     def qname(self, ns=None):
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
+
+
+class ChoiceField(ComplexField):
+    positional = False
+
+    def load(self, *args, **nargs):
+        for field in self.cls._fields:
+            res, subfield = field.load(*args, **nargs)
+            if res:
+                return res, subfield
+        return [], self
+
+    def _subn(self, fld):
+        return '{0}_{1}'.format(self.name, fld.name)
+
+    def has(self, obj):
+        return any(hasattr(obj, self._subn(fld)) for fld in self.cls._fields)
+
+    def set(self, obj, field, value):
+        print self.name, field.name, value
+        setattr(obj, self._subn(field), value)
+
+    def get(self, obj):
+        values = [(getattr(obj, self._subn(f)), f)
+                  for f in self.cls._fields
+                  if hasattr(obj, self._subn(f))]
+        if not values:
+            raise AttributeError('No subfields of ChoiceField {0}'.format(self.name))
+        if len(values) > 1:
+            raise SerializationError('ChoiceField {0} must have only one subfield assigned'
+                                     .format(self.name))
+        return values[0]

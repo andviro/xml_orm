@@ -81,6 +81,7 @@ def test_all_fields():
     a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
     a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
+    open('ttt.xml', 'w').write(bytes(a))
     test_xml = u'''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
   <Издательство>Мурзилка</Издательство>
   <Author>Иван</Author>
@@ -100,7 +101,6 @@ def test_all_fields():
 </Статья>
     '''
     b = Article.load(test_xml)
-    print(bytes(a).decode('utf-8'))
     # print(unicode(a))
     c = Article.load(str(a))
     assert unicode(a) == unicode(b) == unicode(c)
@@ -194,7 +194,7 @@ def test_decimal():
     assert unicode(d) == '<decimal>123.50</decimal>'
 
 
-@raises(ValidationError)
+@raises(SerializationError)
 def test_missing_fields():
     class GoodSchema(Schema):
         req = IntegerField('reqired')
@@ -345,6 +345,7 @@ def test_repr():
     a.b.c = 1
     a.b.d = 2
     a.b.e = A.B.E(f="3")
+    print(repr(a))
     assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
     b = eval(repr(a), {}, locals())
     assert str(b) == '<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'
@@ -489,14 +490,27 @@ def test_pattern_validation_bad():
 
 
 def test_choice():
-    class A(Schema):
-        cf = ChoiceField(
-            a=SimpleField(is_attribute=False, is_text=False),
-            b=SimpleField(is_attribute=False, is_text=False),
-            c=ComplexField(),
-        )
+    class ExtraChoice(Schema):
+        x = SimpleField(is_attribute=False)
+        y = IntegerField()
+        z = FloatField()
 
-    a = A()
-    a.cf = A.Cf.C()
-    print(a)
-    assert 0
+    class A(Schema):
+        f1 = SimpleField()
+        cf1 = ChoiceField(
+            b=SimpleField('simple_b'),
+            c=SimpleField('simple_c'),
+            d=ComplexField('complex_d',
+                           e=ChoiceField(
+                           f=SimpleField('simple_f'),
+                           g=SimpleField('simple_g'),
+                           h=ComplexField('complex_h'))),)
+        f2 = SimpleField()
+        cf2 = ChoiceField(ExtraChoice)
+        cf3 = ChoiceField(ExtraChoice)
+
+    a = A(3, 4, cf1_b=5, cf2_x=6, cf3_y=7)
+    sa = str(a)
+    assert sa == '<A f1="3" f2="4" y="7"><simple_b>5</simple_b><x>6</x></A>'
+    b = A.load(sa)
+    assert str(b) == sa
