@@ -81,7 +81,6 @@ def test_all_fields():
     a.doc.append(a.Doc(uid=1, name='xxx', abzats=u'абзац'))
     a.doc.append(a.Doc(uid=2, name='yyy'))
     a.signer = a.Signer(surname=u'Большой начальник', uid=100, probability=0.4)
-    open('ttt.xml', 'w').write(bytes(a))
     test_xml = u'''<Статья xmlns:t="http://www.example.com/ns1" xmlns="http://www.example.com/ns1">
   <Издательство>Мурзилка</Издательство>
   <Author>Иван</Author>

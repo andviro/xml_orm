@@ -506,7 +506,6 @@ class ChoiceField(ComplexField):
         return any(hasattr(obj, self._subn(fld)) for fld in self.cls._fields)
 
     def set(self, obj, field, value):
-        print self.name, field.name, value
         setattr(obj, self._subn(field), value)
 
     def get(self, obj):
