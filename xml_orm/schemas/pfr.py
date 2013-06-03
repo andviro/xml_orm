@@ -107,13 +107,13 @@ class PFRDocument(Schema):
                            filename=SimpleField(u'@имяФайла')
                            )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = ComplexField(u'подпись',
-                             minOccurs=0,
-                             maxOccurs='unbounded',
+    signatures = ComplexField(u'подпись',
+                              minOccurs=0,
+                              maxOccurs='unbounded',
 
-                             role=SimpleField(u'@роль'),
-                             filename=SimpleField(u'@имяФайла'),
-                             )
+                              role=SimpleField(u'@роль'),
+                              filename=SimpleField(u'@имяФайла'),
+                              )
 
     class Meta:
         root = u'документ'
@@ -151,7 +151,7 @@ class PFRInfo(Schema):
     receiver_sys = ComplexField(PFRSystemReceiver, minOccurs=0)
     receiver = ComplexField(PFRReceiver)
     extra = RawField(u'расширения', minOccurs=0)
-    doc = ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
+    docs = ComplexField(PFRDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'пакет'
@@ -183,6 +183,14 @@ class ContainerPFR(Zipped, ContainerUtil, PFRInfo):
 
         # управление форматированием сохраняемого XML
         pretty_print = True
+
+    @property
+    def doc_code(self):
+        u'''
+        Автоматически вычисляемый код типа документооборота
+        '''
+        doc_code, _ = _reverse_edo_map.get(self.doc_type, None)
+        return doc_code
 
     @property
     def is_positive(self):

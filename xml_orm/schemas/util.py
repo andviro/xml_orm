@@ -18,6 +18,12 @@ class ContainerUtil(object):
     def post_init(self):
         pass
 
+    @property
+    def main_document(self):
+        if not len(self.docs):
+            return None
+        return sorted(self.docs, key=lambda x: getattr(x, 'doc_code', 0))[0]
+
     def add_file(self, filename, doc_type, content_type, content=None,
                  compressed=False, encrypted=False, signature=None, sig_role=None):
         """Добавляет файл в контейнер, а так же в дескриптор контейнера.
@@ -34,20 +40,20 @@ class ContainerUtil(object):
 
         """
         doc_uid = uuid4().hex
-        doc = self.Doc(uid=doc_uid,
-                       type=doc_type,
-                       content_type=content_type,
-                       compressed=compressed,
-                       encrypted=encrypted,
-                       orig_filename=filename,
-                       content=self.Doc.Content(filename=doc_uid + '.bin'))
+        doc = self.Docs(uid=doc_uid,
+                        type=doc_type,
+                        content_type=content_type,
+                        compressed=compressed,
+                        encrypted=encrypted,
+                        orig_filename=filename,
+                        content=self.Docs.Content(filename=doc_uid + '.bin'))
         self.write(doc.content.filename, content)
         if signature is not None:
             sig_uid = uuid4().hex
-            sig = doc.Signature(filename=sig_uid + '.bin')
+            sig = doc.Signatures(filename=sig_uid + '.bin')
             if sig_role is not None:
                 sig.role = sig_role
             self.write(sig.filename, signature)
-            doc.signature.append(sig)
-        self.doc.append(doc)
+            doc.signatures.append(sig)
+        self.docs.append(doc)
         return doc

@@ -36,7 +36,8 @@ def setup_module():
     ti.receiver = ti.Receiver(uid=uuid4().hex)
     ti.sos = ti.Sos(uid=u'2AE')
     for n in range(3):
-        d = ti.add_file(filename='some{0}.xml'.format(n), doc_type='04',
+        d = ti.add_file(filename='some{0}.xml'.format(n),
+                        doc_type='0{0}'.format(n + 1),
                         content_type='xml', content='test content {0}'.format(n),
                         signature='test sign content {0}'.format(n),
                         sig_role=u'спецоператор')
@@ -57,6 +58,11 @@ def test_autoload():
     print(ti.package)
     newti = autoload(ti.package)
     assert isinstance(newti, ContainerFNS)
+
+
+def test_main_doc():
+    global ti
+    assert ti.main_document.orig_filename == 'some0.xml'
 
 
 def test_load():

@@ -362,9 +362,9 @@ class ContainerEDI(ContainerFNS):
 
     protocol = 20
 
-    doc = ComplexField(EDIDocument, minOccurs=0, maxOccurs='unbounded')
+    docs = ComplexField(EDIDocument, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         package = ('EDI_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
-                   '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')
+                   '_{self.doc_code}_{self.trans_code}_{self.docs[0].type_code}.zip')
         schema = _edi_schema

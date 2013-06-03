@@ -22,11 +22,18 @@ def setup_module():
     stat.receiver = stat.Receiver(uid=uuid4().hex, type=u'органФСГС')
     stat.sender_sys = stat.Sender_sys(uid=u'2AE', type=u'оператор')
     stat.receiver_sys = stat.Receiver_sys(uid='2AE', type=u'оператор')
+    doctypes = [u'отчет', u'отчетИзвещение', u'протокол', u'протоколИзвещение', ]
     for n in range(3):
-        stat.add_file(filename='some{0}.xml'.format(n), doc_type=u'отчет',
+        stat.add_file(filename='some{0}.xml'.format(n), doc_type=doctypes[n],
                       content_type='xml', content='test content {0}'.format(n),
                       signature='test sign content {0}'.format(n),
                       sig_role=u'респондент')
+
+
+def test_main_doc():
+    global stat
+    assert (stat.main_document.orig_filename == 'some0.xml'
+            and stat.main_document.type == u'отчет')
 
 
 def teardown_module():

@@ -149,7 +149,7 @@ class StatDocument(Schema):
                            filename=SimpleField(u'@имяФайла')
                            )
     #подпись
-    signature = ComplexField(u'подпись',
+    signatures = ComplexField(u'подпись',
                              minOccurs=0,
                              maxOccurs='unbounded',
 
@@ -196,7 +196,7 @@ class StatInfo(Schema):
                                 )
     extra = RawField(u'расширения', minOccurs=0)
     #документ
-    doc = ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
+    docs = ComplexField(StatDocument, minOccurs=0, maxOccurs='unbounded')
 
 
 class ContainerStat(Zipped, ContainerUtil, StatInfo):

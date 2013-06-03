@@ -576,13 +576,13 @@ class Document(Schema):
                            filename=SimpleField(u'@имяФайла')
                            )
     # подписи, представляются в виде списка элементов типа Signature
-    signature = ComplexField(u'подпись',
-                             minOccurs=0,
-                             maxOccurs=u'unbounded',
+    signatures = ComplexField(u'подпись',
+                              minOccurs=0,
+                              maxOccurs=u'unbounded',
 
-                             role=SimpleField(u'@роль'),
-                             filename=SimpleField(u'@имяФайла'),
-                             )
+                              role=SimpleField(u'@роль'),
+                              filename=SimpleField(u'@имяФайла'),
+                              )
 
     def __init__(self, *args, **nargs):
         u''' Инициализация полей, которые не загружаются/сохраняются из
@@ -611,7 +611,7 @@ class TransInfo(Schema):
     receiver = ComplexField(Receiver)
     extra = RawField(u'ДопСв', minOccurs=0)
     # документы представляются в виде списка
-    doc = ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
+    docs = ComplexField(Document, minOccurs=0, maxOccurs='unbounded')
 
     class Meta:
         root = u'ТрансИнф'
@@ -662,4 +662,4 @@ class ContainerFNS(Zipped, ContainerUtil, TransInfo):
         pretty_print = True
 
         package = ('FNS_{self.sender.uid}_{self.receiver.uid}_{self.file_uid}'
-                   '_{self.doc_code}_{self.trans_code}_{self.doc[0].type_code}.zip')
+                   '_{self.doc_code}_{self.trans_code}_{self.docs[0].type_code}.zip')
