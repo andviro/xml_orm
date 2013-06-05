@@ -402,8 +402,47 @@ class DecimalField(SimpleField):
         return super(DecimalField, self).to_string(res)
 
 
+class _LazyClass(object):
+
+    def __init__(self, getter):
+        self.getter = getter
+        self._real_class = None
+
+    def __call__(self, *args, **nargs):
+        if not self._real_class:
+            self._real_class = self.getter()
+        return self._real_class(*args, **nargs)
+
+    def __getattr__(self, attr):
+        if not self._real_class:
+            self._real_class = self.getter()
+        return getattr(self._real_class, attr)
+
+
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
+
+    def _get_cls(self):
+        if not self._cls or len(self._fields):
+            if self.ref:
+                name = '{0}.{1}'.format(self.schema.__module__, self.ref)
+                print name
+                print locals()
+                open('ttt', 'wb').write(str(globals()))
+                parent = eval(name)
+            else:
+                parent = Schema
+            parent = self._cls or parent
+            self._fields['Meta'] = type('Meta', (object,), {'root': self._root_name})
+            newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
+            self._cls = type(newname, (parent, ), self._fields)
+            self._fields = []
+        return self._cls
+
+    cls = property(_get_cls)
+
+    def _make_cls(self, *args, **nargs):
+        return self.cls(*args, **nargs)
 
     def __init__(self, cls=None, *args, **kwargs):
         """@todo: to be defined
@@ -422,7 +461,8 @@ class ComplexField(SimpleField):
             raise DefinitionError("{0} can't have a pattern"
                                   .format(self.__class__.__name__))
 
-        self.cls = cls
+        self._cls = cls
+        self.ref = kwargs.pop('ref', None)
         self._fields, newargs = {}, {}
         for k, v in kwargs.items():
             if isinstance(v, SimpleField):
@@ -442,26 +482,29 @@ class ComplexField(SimpleField):
         """
         self.name = name
 
-        if isinstance(self.cls, basestring):
-            root_name = self.cls
-            self.cls = None
-        elif self.cls is None:
-            root_name = name
+        if isinstance(self._cls, basestring):
+            self._root_name = self._cls
+            self._cls = None
+        elif self._cls is None:
+            self._root_name = name
+        elif issubclass(self._cls, Schema):
+            self._root_name = getattr(self._cls._meta, 'root', None)
         else:
-            root_name = getattr(self.cls._meta, 'root', None)
+            raise DefinitionError('{0} {1} must be derived from Schema class'
+                                  .format(self.__class__.__name__, self.name))
 
-        self.tag = root_name
-        if not self.cls or len(self._fields):
-            parent = self.cls or Schema
-            self._fields['Meta'] = type('Meta', (object,), {'root': root_name})
-            newname = '{0}.{1}'.format(cls.__name__, name.capitalize())
-            self.cls = type(newname, (parent, ), self._fields)
+        if self.ref and self._cls:
+            raise DefinitionError('{0} {1} must have only one of `cls` or `ref` parameters'
+                                  .format(self.__class__.__name__, self.name))
 
+        self.tag = self._root_name
         super(ComplexField, self).add_to_cls(cls, name)
-        setattr(cls, name.capitalize(), staticmethod(self.cls))
+        setattr(cls, name.capitalize(), staticmethod(_LazyClass(self._get_cls)))
 
     def xml(self, val):
         if not isinstance(val, self.cls):
+            print val.__class__
+            print self.cls
             raise SerializationError('Value for ComplexField {0} must be of class {1}'
                                      .format(self.name, self.cls.__name__))
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''

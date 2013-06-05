@@ -532,3 +532,16 @@ def test_choice():
     assert sa == '<A f1="3" f2="4" y="7"><simple_b>5</simple_b><x>6</x></A>'
     b = A.load(sa)
     assert str(b) == sa
+
+
+def test_recursive():
+    class A(Schema):
+        forward = ComplexField(ref='B', minOccurs=0, maxOccurs='unbounded')
+
+    class B(Schema):
+        backward = ComplexField(ref='A', minOccurs=0, maxOccurs='unbounded')
+
+    a = A(forward=B())
+    print a
+    assert 0
+
