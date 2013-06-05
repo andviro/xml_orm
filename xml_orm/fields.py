@@ -485,7 +485,7 @@ class ComplexField(SimpleField):
                                 self.maxOccurs), self
 
     def qname(self, ns=None):
-        ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
+        ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
 
 

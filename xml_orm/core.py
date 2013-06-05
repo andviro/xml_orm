@@ -240,7 +240,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
     def xml(self, ns=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
         root = etree.Element(unicode(self._meta.root))
-        if ns:
+        if ns is not None:
             root.set('xmlns', ns)
         for field in self._fields:
             field.serialize(self, root)

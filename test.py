@@ -472,6 +472,25 @@ def test_pattern_bad2():
     unicode(a)
 
 
+def test_namespace_inherit():
+    class Container(Schema):
+        class Meta:
+            namespace = 'some_ns'
+
+        inherit = ComplexField(
+            attr=SimpleField()
+        )
+        not_inherit = ComplexField(
+            attr=SimpleField(),
+            qualify=False
+        )
+
+    c = Container(
+        inherit=Container.Inherit(attr=100),
+        not_inherit=Container.Not_inherit(attr=200),)
+    assert str(c) == '<Container xmlns="some_ns"><inherit attr="100"/><not_inherit xmlns="" attr="200"/></Container>'
+
+
 def test_pattern_validation():
     class A(Schema):
         field1 = SimpleField(pattern=r'\d{10}')
