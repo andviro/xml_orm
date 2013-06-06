@@ -96,6 +96,7 @@ class _MetaSchema(type):
     ''''Метакласс для XML-содержимого контейнера
 
     '''
+    forwards = {}
     def __new__(cls, name, bases, attrs):
         """Создание класса, заполнение его полей из описания контейнера
         :returns: новый класс
@@ -147,6 +148,8 @@ class _MetaSchema(type):
                 setter = getattr(new_cls, attr.setter, None) if attr.setter else None
                 setattr(new_cls, attr.name, property(getter, setter))
 
+        _MetaSchema.forwards[new_cls.__name__] = new_cls
+        #print 'init', new_cls.__name__
         return new_cls
 
 

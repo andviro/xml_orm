@@ -109,9 +109,9 @@ def test_nested():
     class Doc(Schema):
         author = CharField('author', max_length=100)
         chapter = ComplexField(
-            'chapter',
-            title=SimpleField('title'),
-            p=SimpleField('p', maxOccurs='unbounded'),
+            u'glava',
+            title=SimpleField(),
+            p=SimpleField(maxOccurs='unbounded'),
             minOccurs=0,
             maxOccurs='unbounded',)
 
@@ -119,12 +119,13 @@ def test_nested():
             root = 'doc'
             pretty_print = True
 
-    d = Doc(author='Ivan Petrov')
-    for i in range(1, 2):
-        d.chapter.append(
-            d.Chapter(title='Chapter {0}'.format(i),
-                      p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
-    # print(d)
+    d = Doc(author='Ivan Petrov', chapter=[Doc.Chapter(title='ttt', p=['asdad'])])
+    #for i in range(1, 2):
+        #d.chapter.append(
+            #d.Chapter(title='Chapter {0}'.format(i),
+                      #p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    print str(d)
+    assert str(d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
     d2 = Doc.load(str(d))
     assert str(d2) == str(d)
 
@@ -488,7 +489,8 @@ def test_namespace_inherit():
     c = Container(
         inherit=Container.Inherit(attr=100),
         not_inherit=Container.Not_inherit(attr=200),)
-    assert str(c) == '<Container xmlns="some_ns"><inherit attr="100"/><not_inherit xmlns="" attr="200"/></Container>'
+    assert str(
+        c) == '<Container xmlns="some_ns"><inherit attr="100"/><not_inherit xmlns="" attr="200"/></Container>'
 
 
 def test_pattern_validation():
@@ -540,8 +542,13 @@ def test_recursive():
 
     class B(Schema):
         backward = ComplexField(ref='A', minOccurs=0, maxOccurs='unbounded')
+        sideways = ComplexField(ref='C', minOccurs=0, maxOccurs='unbounded')
 
-    a = A(forward=B())
-    print a
+    class C(Schema):
+        tuda = ComplexField(ref='A', minOccurs=0, maxOccurs='unbounded')
+        suda = ComplexField(ref='B', minOccurs=0, maxOccurs='unbounded')
+
+    c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
+    print c
+    print repr(c)
     assert 0
-

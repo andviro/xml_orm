@@ -4,8 +4,8 @@ import decimal
 import sys
 import re
 from datetime import datetime
-from copy import deepcopy
-from .core import DefinitionError, SerializationError, ValidationError, Schema, CoreField
+#from copy import deepcopy
+from .core import DefinitionError, SerializationError, ValidationError, Schema, CoreField, _MetaSchema
 try:
     from lxml import etree
 except ImportError:
@@ -423,16 +423,13 @@ class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
     def _get_cls(self):
+        if self.ref:
+            self._cls = _MetaSchema.forwards.get(self.ref)
+            if not self._cls:
+                raise DefinitionError('Reference {0} not found for field {1}'
+                                      .format(self.ref, self.name))
         if not self._cls or len(self._fields):
-            if self.ref:
-                name = '{0}.{1}'.format(self.schema.__module__, self.ref)
-                print name
-                print locals()
-                open('ttt', 'wb').write(str(globals()))
-                parent = eval(name)
-            else:
-                parent = Schema
-            parent = self._cls or parent
+            parent = self._cls or Schema
             self._fields['Meta'] = type('Meta', (object,), {'root': self._root_name})
             newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
             self._cls = type(newname, (parent, ), self._fields)
@@ -453,6 +450,7 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
+        open('log', 'a').write('init {0} {1}\n'.format(self.__class__, cls))
         if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
             raise DefinitionError("{0} can't be text or attribute"
                                   .format(self.__class__.__name__))
@@ -481,12 +479,19 @@ class ComplexField(SimpleField):
 
         """
         self.name = name
+        open('log', 'a').write('begin add {0} {1} to {2}\n'.format(self.name, self._cls, cls))
 
         if isinstance(self._cls, basestring):
             self._root_name = self._cls
-            self._cls = None
+            self._cls = Schema
+            open('log', 'a').write('add0 {0} {1} {2}\n'.format(self.__class__,
+                                                            self._root_name,
+                                                            self._cls))
         elif self._cls is None:
             self._root_name = name
+            open('log', 'a').write('wtf? {0} {1} {2}\n'.format(self.__class__,
+                                                            self._root_name,
+                                                            self._cls))
         elif issubclass(self._cls, Schema):
             self._root_name = getattr(self._cls._meta, 'root', None)
         else:
@@ -502,9 +507,7 @@ class ComplexField(SimpleField):
         setattr(cls, name.capitalize(), staticmethod(_LazyClass(self._get_cls)))
 
     def xml(self, val):
-        if not isinstance(val, self.cls):
-            print val.__class__
-            print self.cls
+        if not issubclass(self.cls, val.__class__):
             raise SerializationError('Value for ComplexField {0} must be of class {1}'
                                      .format(self.name, self.cls.__name__))
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''

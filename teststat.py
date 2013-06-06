@@ -5,11 +5,8 @@ from xml_orm.schemas.auto import autoload
 from uuid import uuid4
 import os
 
-stat = None
 
-
-def setup_module():
-    global stat
+def test_create():
     # Создание контейнера "с нуля"
     # в параметрах конструкторы можно передавать начальные значения полей
     # для непереданных полей присваиваются значения по умолчанию
@@ -28,20 +25,20 @@ def setup_module():
                       content_type='xml', content='test content {0}'.format(n),
                       signature='test sign content {0}'.format(n),
                       sig_role=u'респондент')
+    assert 0
+    return stat
 
 
 def test_main_doc():
-    global stat
+    stat = test_create()
     assert (stat.main_document.orig_filename == 'some0.xml'
             and stat.main_document.type == u'отчет')
 
 
-def teardown_module():
-    os.unlink(stat.package)
-
-
 def test_save_load():
-    global stat
+    stat = test_create()
     stat.save()
+    print repr(stat)
     newstat = autoload(stat.package)
     assert isinstance(newstat, ContainerStat)
+    os.unlink(stat.package)
