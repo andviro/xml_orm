@@ -149,7 +149,6 @@ class _MetaSchema(type):
                 setattr(new_cls, attr.name, property(getter, setter))
 
         _MetaSchema.forwards[new_cls.__name__] = new_cls
-        #print 'init', new_cls.__name__
         return new_cls
 
 

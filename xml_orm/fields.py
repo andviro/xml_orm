@@ -4,7 +4,7 @@ import decimal
 import sys
 import re
 from datetime import datetime
-#from copy import deepcopy
+# from copy import deepcopy
 from .core import DefinitionError, SerializationError, ValidationError, Schema, CoreField, _MetaSchema
 try:
     from lxml import etree
@@ -423,6 +423,17 @@ class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
     def _get_cls(self):
+        if self._finalized:
+            return self._cls
+
+        if isinstance(self._cls, basestring):
+            self.tag = self._cls
+            self._cls = None
+        elif self._cls is None:
+            self.tag = self.name
+        else:
+            self.tag = getattr(self._cls._meta, 'root', None)
+
         if self.ref:
             self._cls = _MetaSchema.forwards.get(self.ref)
             if not self._cls:
@@ -430,10 +441,11 @@ class ComplexField(SimpleField):
                                       .format(self.ref, self.name))
         if not self._cls or len(self._fields):
             parent = self._cls or Schema
-            self._fields['Meta'] = type('Meta', (object,), {'root': self._root_name})
+            self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
             newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
             self._cls = type(newname, (parent, ), self._fields)
             self._fields = []
+        self._finalized = True
         return self._cls
 
     cls = property(_get_cls)
@@ -459,8 +471,12 @@ class ComplexField(SimpleField):
             raise DefinitionError("{0} can't have a pattern"
                                   .format(self.__class__.__name__))
 
-        self._cls = cls
         self.ref = kwargs.pop('ref', None)
+        if self.ref and isinstance(cls, Schema):
+            raise DefinitionError('{0} {1} must have only one of `cls` or `ref` parameters'
+                                  .format(self.__class__.__name__, self.name))
+        self._cls = cls
+        self._finalized = False
         self._fields, newargs = {}, {}
         for k, v in kwargs.items():
             if isinstance(v, SimpleField):
@@ -478,31 +494,10 @@ class ComplexField(SimpleField):
         :returns: @todo
 
         """
-        self.name = name
-        open('log', 'a').write('begin add {0} {1} to {2}\n'.format(self.name, self._cls, cls))
-
-        if isinstance(self._cls, basestring):
-            self._root_name = self._cls
-            self._cls = Schema
-            open('log', 'a').write('add0 {0} {1} {2}\n'.format(self.__class__,
-                                                            self._root_name,
-                                                            self._cls))
-        elif self._cls is None:
-            self._root_name = name
-            open('log', 'a').write('wtf? {0} {1} {2}\n'.format(self.__class__,
-                                                            self._root_name,
-                                                            self._cls))
-        elif issubclass(self._cls, Schema):
-            self._root_name = getattr(self._cls._meta, 'root', None)
-        else:
-            raise DefinitionError('{0} {1} must be derived from Schema class'
-                                  .format(self.__class__.__name__, self.name))
-
-        if self.ref and self._cls:
-            raise DefinitionError('{0} {1} must have only one of `cls` or `ref` parameters'
-                                  .format(self.__class__.__name__, self.name))
-
-        self.tag = self._root_name
+        if (self._cls and not isinstance(cls, basestring)
+                and not issubclass(cls, Schema)):
+            raise DefinitionError('Initializer for {0} {1} must be derived from Schema class'
+                                  ' or string'.format(self.__class__.__name__, name))
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(_LazyClass(self._get_cls)))
 

@@ -119,11 +119,11 @@ def test_nested():
             root = 'doc'
             pretty_print = True
 
-    d = Doc(author='Ivan Petrov', chapter=[Doc.Chapter(title='ttt', p=['asdad'])])
-    #for i in range(1, 2):
-        #d.chapter.append(
-            #d.Chapter(title='Chapter {0}'.format(i),
-                      #p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    d = Doc(author='Ivan Petrov')
+    for i in range(1, 2):
+        d.chapter.append(
+            d.Chapter(title='Chapter {0}'.format(i),
+                      p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
     print str(d)
     assert str(d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
     d2 = Doc.load(str(d))
@@ -549,6 +549,4 @@ def test_recursive():
         suda = ComplexField(ref='B', minOccurs=0, maxOccurs='unbounded')
 
     c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
-    print c
-    print repr(c)
-    assert 0
+    assert str(c) == '<C><A><B><A><B/></A></B></A><B><C><A/></C></B></C>'

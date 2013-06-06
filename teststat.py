@@ -25,7 +25,6 @@ def test_create():
                       content_type='xml', content='test content {0}'.format(n),
                       signature='test sign content {0}'.format(n),
                       sig_role=u'респондент')
-    assert 0
     return stat
 
 
