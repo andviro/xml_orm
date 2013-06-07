@@ -82,7 +82,10 @@ class _Stack(list):
         return res
 
     def get(self, *args, **nargs):
-        return self.__attrs.get(*args, **nargs)
+        return self.__attrs.pop(*args, **nargs)
+
+    def empty(self):
+        return not self.__attrs
 
 
 def _find(lst, name):
@@ -213,8 +216,8 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             ns = getattr(new_elt._meta, 'namespace', _extract_ns(root))
         qn = etree.QName(ns, new_elt._meta.root) if ns else new_elt._meta.root
         if etree.QName(root.tag) != qn:
-            raise ValidationError('Unexpected element "{0}"'
-                                  .format(etree.QName(root.tag)))
+            raise ValidationError('Expected element "{0}", got {1}'
+                                  .format(qn, etree.QName(root.tag)))
         stack = _Stack(root)
         for fld in new_elt._fields:
             val, field = fld.load(stack, ns)
@@ -225,18 +228,19 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                 res = [field.to_python(x) for x in val]
 
             if field.minOccurs > len(res):
-                raise ValidationError('Too few values for field "{0}"'
-                                      .format(field.name))
+                raise ValidationError('Too few values for field "{0}" ({1}) in {2}'
+                                      .format(field.name, field.qname(ns), qn))
             elif field.maxOccurs != 'unbounded' and len(res) > field.maxOccurs:
-                raise ValidationError('Too many values for field "{0}"'
-                                      .format(field.name))
+                raise ValidationError('Too many values for field "{0}" ({1}) in {2}'
+                                      .format(field.name, field.qname(ns), qn))
             if field.maxOccurs != 1:
                 fld.set(new_elt, field, res)
             elif len(res):
                 fld.set(new_elt, field, res[0])
         if len(stack):
-            raise ValidationError('Unexpected {0} nodes after last field'
-                                  .format(len(stack)))
+            raise ValidationError('Unexpected nodes inside {0}: {1}'
+                                  .format(qn, [n if isinstance(n, basestring)
+                                               else n.tag for n in stack]))
         return new_elt
 
     def xml(self, ns=None):

@@ -125,7 +125,8 @@ def test_nested():
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
     print str(d)
-    assert str(d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
+    assert str(
+        d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
     d2 = Doc.load(str(d))
     assert str(d2) == str(d)
 
@@ -548,5 +549,8 @@ def test_recursive():
         tuda = ComplexField(ref='A', minOccurs=0, maxOccurs='unbounded')
         suda = ComplexField(ref='B', minOccurs=0, maxOccurs='unbounded')
 
+        class Meta:
+            root = 'Some'
+
     c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
-    assert str(c) == '<C><A><B><A><B/></A></B></A><B><C><A/></C></B></C>'
+    assert str(c) == '<Some><A><B><A><B/></A></B></A><B><Some><A/></Some></B></Some>'

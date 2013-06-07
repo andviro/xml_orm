@@ -242,6 +242,13 @@ class SimpleField(_SortedEntry, CoreField):
 class RawField(SimpleField):
     """Docstring for RawField """
 
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
+            raise DefinitionError("{0} can't be text or attribute"
+                                  .format(self.__class__.__name__))
+        kwargs['is_attribute'] = kwargs['is_text'] = False
+        super(RawField, self).__init__(*args, **kwargs)
+
     def _load_element(self, stack, ns):
         """@todo: Docstring for _load_element
 
@@ -439,6 +446,8 @@ class ComplexField(SimpleField):
             if not self._cls:
                 raise DefinitionError('Reference {0} not found for field {1}'
                                       .format(self.ref, self.name))
+            self.tag = getattr(self._cls._meta, 'root', None)
+
         if not self._cls or len(self._fields):
             parent = self._cls or Schema
             self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
