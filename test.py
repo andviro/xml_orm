@@ -396,8 +396,9 @@ def test_datetime():
 
 def test_pavel():
     class Operator(Schema):
-        uid = SimpleField(u'@ИденСОС', min_length=3, max_length=3, default='1AE')
-        name = SimpleField(u'@НаимОрг', min_length=3, max_length=1000, default='ЗАО Калуга Астрал')
+        uid = SimpleField(u'@ИденСОС', min_length=3, max_length=3, default=u'1AE')
+        name = SimpleField(u'@НаимОрг', min_length=3, max_length=1000,
+                           default=u'ЗАО Калуга Астрал')
 
         class Meta:
             root = u'СпецОперат'
@@ -410,7 +411,7 @@ def test_pavel():
 
     operator = Operator()
     conforg = ConfirmOrganisation(operator=operator)
-    print(conforg)
+    print(unicode(conforg))
 
 
 def test_positional():

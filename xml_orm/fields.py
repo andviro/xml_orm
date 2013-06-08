@@ -471,7 +471,6 @@ class ComplexField(SimpleField):
         :**kwargs: @todo
 
         """
-        open('log', 'a').write('init {0} {1}\n'.format(self.__class__, cls))
         if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
             raise DefinitionError("{0} can't be text or attribute"
                                   .format(self.__class__.__name__))
