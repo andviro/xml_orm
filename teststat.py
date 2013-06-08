@@ -37,7 +37,6 @@ def test_main_doc():
 def test_save_load():
     stat = test_create()
     stat.save()
-    print repr(stat)
     newstat = autoload(stat.package)
     assert isinstance(newstat, ContainerStat)
     os.unlink(stat.package)

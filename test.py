@@ -124,7 +124,7 @@ def test_nested():
         d.chapter.append(
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
-    print str(d)
+    print(str(d))
     assert str(
         d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
     d2 = Doc.load(str(d))
@@ -490,6 +490,7 @@ def test_namespace_inherit():
     c = Container(
         inherit=Container.Inherit(attr=100),
         not_inherit=Container.Not_inherit(attr=200),)
+    print(c)
     assert str(
         c) == '<Container xmlns="some_ns"><inherit attr="100"/><not_inherit xmlns="" attr="200"/></Container>'
 
@@ -553,4 +554,5 @@ def test_recursive():
             root = 'Some'
 
     c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
+    print(c)
     assert str(c) == '<Some><A><B><A><B/></A></B></A><B><Some><A/></Some></B></Some>'
