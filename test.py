@@ -1,8 +1,8 @@
 # coding: utf-8
+from nose.tools import raises
 from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError
 from xml_orm.util import Zipped
 from xml_orm.fields import *
-from nose.tools import raises
 from zipfile import ZipFile
 import sys
 from tempfile import mkstemp
@@ -20,7 +20,7 @@ else:
 
 class Document(Schema):
     uid = IntegerField(u'ИД')
-    abzats = SimpleField(is_text=1, minOccurs=0)
+    abzats = SimpleField.T(minOccurs=0)
     name = CharField(u'ИмяФайла', max_length=255)
 
     class Meta:
@@ -41,7 +41,7 @@ class Author(Schema):
 class Signature(Schema):
     uid = CharField(u'@ИД', max_length=32, qualify=True)
     probability = FloatField(u'Вероятность')
-    surname = SimpleField(is_text=1)
+    surname = SimpleField.T()
 
     class Meta:
         root = u'Подпись'
@@ -100,8 +100,8 @@ def test_all_fields():
 </Статья>
     '''
     b = Article.load(test_xml)
-    # print(unicode(a))
     c = Article.load(str(a))
+    print b
     assert unicode(a) == unicode(b) == unicode(c)
 
 
@@ -110,8 +110,8 @@ def test_nested():
         author = CharField('author', max_length=100)
         chapter = ComplexField(
             u'glava',
-            title=SimpleField(),
-            p=SimpleField(maxOccurs='unbounded'),
+            title=SimpleField.A(),
+            p=SimpleField.A(maxOccurs='unbounded'),
             minOccurs=0,
             maxOccurs='unbounded',)
 
@@ -143,6 +143,7 @@ def test_interleaved_text():
             pretty_print = True
 
     it = InterleavedText(text1='1', elt1='a', text2='2', elt2='b')
+    print it
     it2 = InterleavedText.load('<inter>1<elt>a</elt>2<elt>b</elt></inter>')
     assert (unicode(it).strip() == unicode(it2).strip()
             == '<inter>1<elt>a</elt>2<elt>b</elt></inter>')
@@ -308,12 +309,12 @@ def test_bool():
 
 def test_new_syntax():
     class newsch(Schema):
-        f1 = SimpleField(default='f1')
+        f1 = SimpleField.A(default='f1')
         f2 = ComplexField(
             f1=ComplexField(
-                f1=SimpleField(default="f2.f1.f1"),
-                f2=SimpleField(default="f2.f1.f2")),
-            f2=SimpleField(default="f2.f2"),)
+                f1=SimpleField.A(default="f2.f1.f1"),
+                f2=SimpleField.A(default="f2.f1.f2")),
+            f2=SimpleField.A(default="f2.f2"),)
 
         class Meta:
             pretty_print = 1
@@ -333,10 +334,10 @@ def test_new_syntax():
 
 def test_repr():
     class A(Schema):
-        a = IntegerField()
+        a = IntegerField.A()
         b = ComplexField(
-            c=IntegerField(),
-            d=IntegerField(),
+            c=IntegerField.A(),
+            d=IntegerField.A(),
             e=ComplexField(f=CharField(max_length=3, is_attribute=False))
         )
 
@@ -349,6 +350,8 @@ def test_repr():
     print(repr(a))
     assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
     b = eval(repr(a), {}, locals())
+    print(repr(b))
+    print(str(b))
     assert str(b) == '<A a="1"><b c="1" d="2"><e><f>3</f></e></b></A>'
 
 
@@ -356,11 +359,11 @@ def test_zipped():
     tmpzip = mkstemp('.zip')[1]
 
     class A(Zipped, Schema):
-        a = IntegerField()
+        a = IntegerField.A()
         b = ComplexField(
-            c=IntegerField(),
-            d=IntegerField(),
-            e=ComplexField(f=CharField(max_length=3, is_attribute=False))
+            c=IntegerField.A(),
+            d=IntegerField.A(),
+            e=ComplexField(f=CharField(max_length=3))
         )
 
         class Meta:
@@ -481,10 +484,10 @@ def test_namespace_inherit():
             namespace = 'some_ns'
 
         inherit = ComplexField(
-            attr=SimpleField()
+            attr=SimpleField.A()
         )
         not_inherit = ComplexField(
-            attr=SimpleField(),
+            attr=SimpleField.A(),
             qualify=False
         )
 
@@ -498,7 +501,7 @@ def test_namespace_inherit():
 
 def test_pattern_validation():
     class A(Schema):
-        field1 = SimpleField(pattern=r'\d{10}')
+        field1 = SimpleField.A(pattern=r'\d{10}')
 
     a = A.load('<A field1="1234567891"/>')
     assert a.field1 == '1234567891'
@@ -507,36 +510,31 @@ def test_pattern_validation():
 @raises(ValidationError)
 def test_pattern_validation_bad():
     class A(Schema):
-        field1 = SimpleField(pattern=r'\d{10}')
+        field1 = SimpleField.A(pattern=r'\d{10}')
 
     A.load('<A field1="adsasdas"/>')
 
 
 def test_choice():
-    class ExtraChoice(Schema):
-        x = SimpleField(is_attribute=False)
+    class FromSchema(Schema):
+        x = SimpleField()
         y = IntegerField()
         z = FloatField()
 
     class A(Schema):
         f1 = SimpleField()
-        cf1 = ChoiceField(
-            b=SimpleField('simple_b'),
-            c=SimpleField('simple_c'),
-            d=ComplexField('complex_d',
-                           e=ChoiceField(
-                           f=SimpleField('simple_f'),
-                           g=SimpleField('simple_g'),
-                           h=ComplexField('complex_h'))),)
-        f2 = SimpleField()
-        cf2 = ChoiceField(ExtraChoice)
-        cf3 = ChoiceField(ExtraChoice)
+        cf1 = ChoiceField(FromSchema, maxOccurs='unbounded')
+        cf2 = ChoiceField(a=SimpleField(),
+                          b=IntegerField(),
+                          c=FloatField(),)
 
-    a = A(3, 4, cf1_b=5, cf2_x=6, cf3_y=7)
-    sa = str(a)
-    assert sa == '<A f1="3" f2="4" y="7"><simple_b>5</simple_b><x>6</x></A>'
+    a = A(1, [A.Cf1(x="test"), A.Cf1(y=3)], A.Cf2(c=3.5))
+    print repr(a)
+    sa = unicode(a)
+    print sa
     b = A.load(sa)
-    assert str(b) == sa
+    print b
+    assert 0
 
 
 def test_recursive():

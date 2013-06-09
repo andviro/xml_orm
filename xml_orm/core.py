@@ -67,7 +67,7 @@ def _iterate(root):
 
 class _Stack(list):
     def __init__(self, root):
-        self.__attrs = dict(root.attrib)
+        self._attrs = dict(root.attrib)
         super(_Stack, self).__init__(_iterate(root))
 
     def take_while(self, fun, maxlen):
@@ -82,10 +82,10 @@ class _Stack(list):
         return res
 
     def get(self, *args, **nargs):
-        return self.__attrs.pop(*args, **nargs)
+        return self._attrs.pop(*args, **nargs)
 
     def empty(self):
-        return not self.__attrs
+        return not self._attrs
 
 
 def _find(lst, name):
@@ -100,6 +100,7 @@ class _MetaSchema(type):
 
     '''
     forwards = {}
+
     def __new__(cls, name, bases, attrs):
         """Создание класса, заполнение его полей из описания контейнера
         :returns: новый класс
@@ -125,7 +126,7 @@ class _MetaSchema(type):
         new_cls._fields = []
         if len(parents):
             new_attrs = [(f.name, deepcopy(f)) for f in parents[0]
-                         ._fields if isinstance(f, CoreField)]
+                         ._fields if issubclass(f.__class__, CoreField)]
         else:
             new_attrs = []
         for name, attr in sorted(attrs.items(), key=lambda x: getattr(x[1], 'sort_weight', 0)):
@@ -144,6 +145,8 @@ class _MetaSchema(type):
                 new_attrs.insert(pos, (name, attr))
             else:
                 setattr(new_cls, name, attr)
+
+        new_cls._field_index = dict(new_attrs)
         for (name, attr) in new_attrs:
             attr.add_to_cls(new_cls, name)
             if attr.getter is not None or attr.setter is not None:
@@ -165,12 +168,12 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         """
         if not hasattr(self._meta, 'root'):
             setattr(self._meta, 'root', self.__class__.__name__)
-        pairs = list(zip((f for f in self._fields if f.positional), args))
+        pairs = list(zip(self._fields, args))
         if len(pairs) < len(args):
             raise DefinitionError('Extra positional arguments in constructor')
 
         for field, value in pairs:
-            setattr(self, field.name, value)
+            field.set(self, value)
 
         for field in self._fields[len(pairs):]:
             value = None
@@ -180,8 +183,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                 value = field.default
             elif field.maxOccurs != 1:
                 value = []
-            if value is not None:
-                setattr(self, field.name, value)
+            field.set(self, value)
 
         for name, value in kwargs.items():
             setattr(self, name, value)
@@ -220,27 +222,17 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                                   .format(qn, etree.QName(root.tag)))
         stack = _Stack(root)
         for fld in new_elt._fields:
-            val, field = fld.load(stack, ns)
-            if not len(val) and field.has_default and field.minOccurs > 0:
-                res = (field.default
-                       if isinstance(field.default, list) else [field.default])
-            else:
-                res = [field.to_python(x) for x in val]
+            values = fld.load(stack, ns)
+            fld.set(new_elt, values)
+            fld.check_len(new_elt, ValidationError)
 
-            if field.minOccurs > len(res):
-                raise ValidationError('Too few values for field "{0}" ({1}) in {2}'
-                                      .format(field.name, field.qname(ns), qn))
-            elif field.maxOccurs != 'unbounded' and len(res) > field.maxOccurs:
-                raise ValidationError('Too many values for field "{0}" ({1}) in {2}'
-                                      .format(field.name, field.qname(ns), qn))
-            if field.maxOccurs != 1:
-                fld.set(new_elt, field, res)
-            elif len(res):
-                fld.set(new_elt, field, res[0])
         if len(stack):
             raise ValidationError('Unexpected nodes inside {0}: {1}'
                                   .format(qn, [n if isinstance(n, basestring)
                                                else n.tag for n in stack]))
+        if len(stack._attrs):
+            raise ValidationError('Unprocessed attributes left for {0}: {1}'
+                                  .format(qn, stack._attrs.keys()))
         return new_elt
 
     def xml(self, ns=None):
@@ -249,7 +241,18 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         if ns is not None:
             root.set('xmlns', ns)
         for field in self._fields:
-            field.serialize(self, root)
+            if not field.has(self) and field.minOccurs != 0:
+                raise SerializationError('Required field "{0}" not assigned'
+                                         .format(field.name))
+            field.check_len(self, SerializationError)
+            value = field.get(self)
+            if isinstance(value, list):
+                value = [field.xml(v) for v in value]
+            elif value is None:
+                continue
+            else:
+                value = [field.xml(value)]
+            field.store(value, root)
         return root
 
     def _make_bytes(self):

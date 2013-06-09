@@ -59,7 +59,7 @@ class XSD(Schema):
         maxOccurs='unbounded',
         element=ComplexField(Element, maxOccurs='unbounded'),
         complex_type=ComplexField(ComplexType, maxOccurs='unbounded'),
-        simple_type = RawField('simpleType', maxOccurs='unbounded'),
+        simple_type=RawField('simpleType', maxOccurs='unbounded'),
         imp=RawField('import'),
     )
 
@@ -68,5 +68,6 @@ class XSD(Schema):
         namespace = 'http://www.w3.org/2001/XMLSchema'
 
 
-xsd = XSD.load(u'logical-message-v1.xsd')
-print str(xsd)
+if __name__ == '__main__':
+    xsd = XSD.load(u'logical-message-v1.xsd')
+    print str(xsd)

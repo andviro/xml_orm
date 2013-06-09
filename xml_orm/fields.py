@@ -29,18 +29,106 @@ class _SortedEntry(object):
         _SortedEntry.n += 1
 
 
+class _AttrMixin(object):
+    def __init__(self, *args, **nargs):
+        nargs['qualify'] = nargs.pop('qualify', False)
+        super(_AttrMixin, self).__init__(*args, **nargs)
+        self.is_attribute = True
+        if isinstance(self.tag, basestring) and self.tag.startswith('@'):
+            self.tag = self.tag[1:]
+
+    def store(self, value, root):
+        ns = root.get('xmlns', None)
+        root.set(self.qname(ns), ' '.join(value))
+
+    def consume(self, stack, ns):
+        """@todo: Docstring for _load_attrib
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        val = stack.get(self.qname(ns), None)
+        if val is not None and self.maxOccurs != 1:
+            res = val.split()
+        elif val is None:
+            res = []
+        else:
+            res = [val]
+        return res
+
+    def xml(self, value, ns=None):
+        return self.to_string(value)
+
+
+class _TextMixin(object):
+    def __init__(self, *args, **nargs):
+        super(_TextMixin, self).__init__(*args, **nargs)
+        if self.tag is not None:
+            raise DefinitionError("Text field can't have tag name")
+        self.is_text = True
+
+    def store(self, value, root):
+        if not len(root):
+            root.text = unicode(' '.join(value))
+        else:
+            root[-1].tail = unicode(' '.join(value))
+
+    def consume(self, stack, ns):
+        """@todo: Docstring for _load_text
+
+        :root: @todo
+        :stack: @todo
+        :ns: @todo
+        :returns: @todo
+
+        """
+        return stack.take_while(lambda x: isinstance(x, basestring), 1)
+
+    def xml(self, value, ns=None):
+        return self.to_string(value)
+
+
+def _mkattr(cls):
+    return type('{0}_Attr'.format(cls.__name__), (_AttrMixin, cls), {})
+
+
+def _mktext(cls):
+    return type('{0}_Text'.format(cls.__name__), (_TextMixin, cls), {})
+
+
 class SimpleField(_SortedEntry, CoreField):
     '''Базовый класс для полей в контейнере
 
     '''
-    positional = True
+
+    @classmethod
+    def A(cls, *args, **nargs):
+        real_class = _mkattr(cls)
+        return real_class(*args, **nargs)
+
+    @classmethod
+    def T(cls, *args, **nargs):
+        real_class = _mktext(cls)
+        return real_class(*args, **nargs)
+
+    def __new__(cls, tag=None, *args, **nargs):
+        if nargs.pop('is_text', False):
+            res = _mktext(cls)
+            return super(res.__class__, res).__new__(res, tag, *args, **nargs)
+        elif isinstance(tag, basestring) and tag.startswith('@'):
+            res = _mkattr(cls)
+            return super(res.__class__, res).__new__(res, tag, *args, **nargs)
+        else:
+            res = super(SimpleField, cls).__new__(cls, tag, *args, **nargs)
+        return res
 
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
                  qualify=None,
                  getter=None,
                  setter=None,
-                 is_attribute=None,
-                 is_text=False,
                  insert_before=None,
                  insert_after=None,
                  pattern=None,
@@ -54,37 +142,8 @@ class SimpleField(_SortedEntry, CoreField):
         super(SimpleField, self).__init__()
         self.name = None
         self.tag = tag
-        if is_attribute and is_text:
-            raise DefinitionError(
-                "Field can't be both attribute and text data")
-
-        self.is_attribute = is_attribute
-
-        self.is_text = is_text
-
         self.pattern = pattern
-
-        if self.tag is not None and self.is_text:
-            raise DefinitionError("Text stored field can't have tag name")
-
-        if tag and tag.startswith('@'):
-            if self.is_attribute is None:
-                self.is_attribute = True
-            elif not self.is_attribute:
-                raise DefinitionError(
-                    "Field tag contradicts with is_attribute parameter")
-            self.tag = tag[1:]
-
-        self.is_attribute = (tag is None
-                             and self.is_attribute is None
-                             and not self.is_text
-                             or self.is_attribute)
-
-        if self.is_attribute:
-            self.qualify = qualify is not None and qualify
-        else:
-            self.qualify = qualify is None or qualify
-
+        self.qualify = qualify is None or qualify
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
@@ -99,39 +158,19 @@ class SimpleField(_SortedEntry, CoreField):
         else:
             self.has_default = False
 
-    def serialize(self, obj, root):
-        if not self.has(obj):
-            if self.minOccurs != 0:
-                raise SerializationError('Required field "{0}" not assigned'
-                                         .format(self.name))
-            else:
-                return
-
-        value, field = self.get(obj)
-        if not field.check_len(value):
-            raise SerializationError('Invalid occurence count {0} for field "{1}"'
-                                     .format(len(value), field.name))
-        if isinstance(value, list):
-            value = [field.xml(v) for v in value]
-        else:
-            value = [field.xml(value)]
-
-        if field.is_text:
-            if not len(root):
-                root.text = unicode(' '.join(value))
-            else:
-                root[-1].tail = unicode(' '.join(value))
-        elif field.is_attribute:
-            ns = root.get('xmlns', None)
-            root.set(field.qname(ns), ' '.join(value))
-        else:
-            root.extend(value)
+    def store(self, value, root):
+        for val in value:
+            root.append(val)
 
     def get(self, obj):
-        return getattr(obj, self.name), self
+        return getattr(obj, self.name, None)
 
-    def set(self, obj, field, value):
-        setattr(obj, field.name, value)
+    def set(self, obj, value):
+        if isinstance(value, list) and self.maxOccurs == 1:
+            value = value[0] if len(value) else None
+        elif value is None:
+            return
+        setattr(obj, self.name, value)
 
     def has(self, obj):
         return hasattr(obj, self.name)
@@ -167,46 +206,20 @@ class SimpleField(_SortedEntry, CoreField):
         cls._fields.append(self)
 
     def repr(self, obj):
-        val, field = self.get(obj)
-        return '{0}={1!r}'.format(field.name, val)
+        val = self.get(obj)
+        return '{0}={1!r}'.format(self.name, val)
 
-    def load(self, *args, **nargs):
-        if self.is_attribute:
-            return self._load_attrib(*args, **nargs)
-        elif self.is_text:
-            return self._load_text(*args, **nargs)
-        return self._load_element(*args, **nargs)
-
-    def _load_attrib(self, stack, ns):
-        """@todo: Docstring for _load_attrib
-
-        :root: @todo
-        :stack: @todo
-        :ns: @todo
-        :returns: @todo
-
-        """
-        val = stack.get(self.qname(ns), None)
-        if val is not None and self.maxOccurs != 1:
-            res = val.split()
-        elif val is None:
-            res = []
+    def load(self, stack, ns):
+        val = self.consume(stack, ns)
+        if not len(val) and self.has_default and self.minOccurs > 0:
+            val = (self.default
+                   if isinstance(self.default, list) else [self.default])
         else:
-            res = [val]
-        return res, self
+            val = [self.to_python(x) for x in val]
 
-    def _load_text(self, stack, ns):
-        """@todo: Docstring for _load_text
+        return val
 
-        :root: @todo
-        :stack: @todo
-        :ns: @todo
-        :returns: @todo
-
-        """
-        return stack.take_while(lambda x: isinstance(x, basestring), 1), self
-
-    def _load_element(self, stack, ns):
+    def consume(self, stack, ns):
         """@todo: Docstring for _load_element
 
         :root: @todo
@@ -217,26 +230,32 @@ class SimpleField(_SortedEntry, CoreField):
         """
         qn = self.qname(ns)
         return [x.text or "" for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
-                                                       self.maxOccurs)], self
+                                                       self.maxOccurs)]
 
     def xml(self, value, ns=None):
-        val = self.to_string(value)
-        if self.is_text or self.is_attribute:
-            return val
+        if self.qualify:
+            ns = getattr(self.schema._meta,
+                         'namespace', None) if ns is None else ns
         else:
-            if self.qualify:
-                ns = getattr(self.schema._meta,
-                             'namespace', None) if ns is None else ns
-            else:
-                ns = ''
-            res = etree.Element(self.qname(ns) if ns else self.tag)
-            res.text = val
-            return res
+            ns = ''
+        res = etree.Element(self.qname(ns) if ns else self.tag)
+        res.text = self.to_string(value)
+        return res
 
-    def check_len(self, val):
-        l = len(val) if isinstance(val, list) else 1
-        return ((self.has_default or l >= self.minOccurs) and
-                (self.maxOccurs == 'unbounded' or l <= self.maxOccurs))
+    def check_len(self, obj, exc):
+        values = getattr(obj, self.name, None)
+        if values is None:
+            l = 0
+        elif not isinstance(values, list):
+            l = 1
+        else:
+            l = len(values)
+        if self.minOccurs > l:
+            raise exc('Too few values for field {0}: {1}'
+                      .format(self.name, l))
+        elif self.maxOccurs != 'unbounded' and l > self.maxOccurs:
+            raise exc('Too many values for field {0}: {1}'
+                      .format(self.name, l))
 
 
 class RawField(SimpleField):
@@ -249,7 +268,7 @@ class RawField(SimpleField):
         kwargs['is_attribute'] = kwargs['is_text'] = False
         super(RawField, self).__init__(*args, **kwargs)
 
-    def _load_element(self, stack, ns):
+    def load(self, stack, ns):
         """@todo: Docstring for _load_element
 
         :root: @todo
@@ -261,7 +280,7 @@ class RawField(SimpleField):
         qn = self.qname(ns)
         return [x for x in stack.take_while(
             lambda x: hasattr(x, 'tag') and x.tag == qn,
-            self.maxOccurs)], self
+            self.maxOccurs)]
 
     def to_python(self, root):
         return root
@@ -426,8 +445,14 @@ class _LazyClass(object):
         return getattr(self._real_class, attr)
 
 
+class _Dummy(object):
+    pass
+
+
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
+
+    mixin_class = _Dummy
 
     def _get_cls(self):
         if self._finalized:
@@ -448,12 +473,12 @@ class ComplexField(SimpleField):
                                       .format(self.ref, self.name))
             self.tag = getattr(self._cls._meta, 'root', None)
 
-        if not self._cls or len(self._fields):
-            parent = self._cls or Schema
-            self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
-            newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
-            self._cls = type(newname, (parent, ), self._fields)
-            self._fields = []
+        parent = self._cls or Schema
+        self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
+        newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
+        self._cls = type(newname, (self.mixin_class, parent), self._fields)
+        self._fields = []
+
         self._finalized = True
         return self._cls
 
@@ -511,8 +536,9 @@ class ComplexField(SimpleField):
 
     def xml(self, val):
         if not issubclass(self.cls, val.__class__):
-            raise SerializationError('Value for ComplexField {0} must be of class {1}'
-                                     .format(self.name, self.cls.__name__))
+            raise SerializationError('Value for {0} {1} must be of class {2}'
+                                     .format(self.__class__.__name__,
+                                             self.name, self.cls.__name__))
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return val.xml(ns=ns)
 
@@ -520,7 +546,7 @@ class ComplexField(SimpleField):
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         return self.cls.load(root, ns)
 
-    def _load_element(self, stack, ns):
+    def consume(self, stack, ns):
         """@todo: Docstring for _load_element
 
         :root: @todo
@@ -531,39 +557,49 @@ class ComplexField(SimpleField):
         """
         qn = self.qname(ns)
         return stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
-                                self.maxOccurs), self
+                                self.maxOccurs)
 
     def qname(self, ns=None):
         ns = getattr(self.cls._meta, 'namespace', ns) if self.qualify else ''
         return unicode(etree.QName(ns, self.tag)) if ns and self.qualify else self.tag
 
 
+class _UnionMixin(object):
+    def __init__(self, *args, **nargs):
+        if len(args):
+            raise DefinitionError("Union can't be initialized with positional"
+                                  " arguments")
+        initializers = zip(nargs.keys(), self._field_index.keys())
+        if len(initializers) > 1:
+            raise DefinitionError("Union can't be initialized with more than"
+                                  " one value")
+        super(_UnionMixin, self).__init__(*args, **nargs)
+        self._field = None
+        self._value = None
+
+    def __setattr__(self, key, value):
+        if key in self._field_index:
+            self._field = self._field_index[key]
+            self._value = value
+        super(_UnionMixin, self).__setattr__(key, value)
+
+
 class ChoiceField(ComplexField):
-    positional = False
+    mixin_class = _UnionMixin
 
-    def load(self, *args, **nargs):
-        for field in self.cls._fields:
-            res, subfield = field.load(*args, **nargs)
-            if res:
-                return res, subfield
-        return [], self
-
-    def _subn(self, fld):
-        return '{0}_{1}'.format(self.name, fld.name)
-
-    def has(self, obj):
-        return any(hasattr(obj, self._subn(fld)) for fld in self.cls._fields)
-
-    def set(self, obj, field, value):
-        setattr(obj, self._subn(field), value)
-
-    def get(self, obj):
-        values = [(getattr(obj, self._subn(f)), f)
-                  for f in self.cls._fields
-                  if hasattr(obj, self._subn(f))]
-        if not values:
-            raise AttributeError('No subfields of ChoiceField {0}'.format(self.name))
-        if len(values) > 1:
-            raise SerializationError('ChoiceField {0} must have only one subfield assigned'
-                                     .format(self.name))
-        return values[0]
+    def load(self, stack, ns):
+        res = []
+        while True:
+            flag = False
+            for field in self.cls._fields:
+                val = field.load(stack, ns)
+                if len(val):
+                    newelt = self.cls()
+                    field.set(newelt, val)
+                    field.check_len(newelt, ValidationError)
+                    res.append(newelt)
+                    flag = True
+                    break
+            if not flag:
+                break
+        return res
