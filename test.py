@@ -22,6 +22,7 @@ class Document(Schema):
     uid = IntegerField(u'ИД')
     abzats = SimpleField.T(minOccurs=0)
     name = CharField(u'ИмяФайла', max_length=255)
+    optional = FloatField.A(minOccurs=0)
 
     class Meta:
         root = u'Документ'
@@ -129,6 +130,39 @@ def test_nested():
         d) == '<doc><author>Ivan Petrov</author><glava title="Chapter 1" p="Paragraph 1.1 Paragraph 1.2 Paragraph 1.3"/></doc>'
     d2 = Doc.load(str(d))
     assert str(d2) == str(d)
+
+
+def test_split_attr():
+    class A(Schema):
+        split = IntegerField.A(maxOccurs=10)
+
+    a = A(split=[1, 2, 3, 4, 5])
+    assert str(a) == '<A split="1 2 3 4 5"/>'
+    b = A.load('<A split="1 2 3 4 5"/>')
+    assert len(b.split) == 5 and all(isinstance(x, int) for x in b.split)
+
+
+@raises(SerializationError)
+def test_split_attr_bad():
+    class A(Schema):
+        split = IntegerField.A(maxOccurs=10)
+
+    a = A(split=list(range(11)))
+    str(a)
+
+
+@raises(ValidationError)
+def test_split_attr_bad2():
+    class A(Schema):
+        split = IntegerField.A(maxOccurs=10)
+
+    A.load('<A split="1 2 3 4 5 6 7 8 9 10 11"/>')
+
+
+@raises(DefinitionError)
+def test_bad_complex_field():
+    class A(Schema):
+        bad = ComplexField.A()
 
 
 def test_interleaved_text():

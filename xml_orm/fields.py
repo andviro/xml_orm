@@ -33,7 +33,7 @@ class _AttrMixin(object):
     def __init__(self, *args, **nargs):
         nargs['qualify'] = nargs.pop('qualify', False)
         super(_AttrMixin, self).__init__(*args, **nargs)
-        self.is_attribute = True
+        self.storage_type = 'attribute'
         if isinstance(self.tag, basestring) and self.tag.startswith('@'):
             self.tag = self.tag[1:]
 
@@ -72,7 +72,7 @@ class _TextMixin(object):
         super(_TextMixin, self).__init__(*args, **nargs)
         if self.tag is not None:
             raise DefinitionError("Text field can't have tag name")
-        self.is_text = True
+        self.storage_type = 'text'
 
     def serialize(self, obj, root):
         value = self.get(obj)
@@ -124,7 +124,8 @@ class SimpleField(_SortedEntry, CoreField):
         if nargs.pop('is_text', False):
             res = _mktext(cls)
             return super(res.__class__, res).__new__(res, tag, *args, **nargs)
-        elif isinstance(tag, basestring) and tag.startswith('@'):
+        elif (isinstance(tag, basestring) and tag.startswith('@')
+              or nargs.pop('is_attribute', False)):
             res = _mkattr(cls)
             return super(res.__class__, res).__new__(res, tag, *args, **nargs)
         else:
@@ -153,6 +154,7 @@ class SimpleField(_SortedEntry, CoreField):
         self.getter = getter
         self.setter = setter
         self.minOccurs = minOccurs
+        self.storage_type = 'element'
         if maxOccurs == 0:
             raise DefinitionError("Field maxOccurs can't be 0")
         self.maxOccurs = maxOccurs
@@ -549,6 +551,9 @@ class ComplexField(SimpleField):
                                   ' or string'.format(self.__class__.__name__, name))
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(_LazyClass(self._get_cls)))
+        if self.storage_type != 'element':
+            raise DefinitionError("{0} '{1}' cann't be text or attribute"
+                                  .format(self.__class__.__name__, self.name))
 
     def serialize(self, obj, root):
         value = self.get(obj)
