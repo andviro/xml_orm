@@ -529,12 +529,12 @@ def test_choice():
                           c=FloatField(),)
 
     a = A(1, [A.Cf1(x="test"), A.Cf1(y=3)], A.Cf2(c=3.5))
-    print repr(a)
+    print(repr(a))
     sa = unicode(a)
-    print sa
+    print(sa)
     b = A.load(sa)
-    print b
-    assert 0
+    print(b)
+    assert sa == str(b)
 
 
 def test_recursive():

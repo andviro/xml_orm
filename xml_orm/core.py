@@ -241,18 +241,8 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         if ns is not None:
             root.set('xmlns', ns)
         for field in self._fields:
-            if not field.has(self) and field.minOccurs != 0:
-                raise SerializationError('Required field "{0}" not assigned'
-                                         .format(field.name))
             field.check_len(self, SerializationError)
-            value = field.get(self)
-            if isinstance(value, list):
-                value = [field.xml(v) for v in value]
-            elif value is None:
-                continue
-            else:
-                value = [field.xml(value)]
-            field.store(value, root)
+            field.serialize(self, root)
         return root
 
     def _make_bytes(self):

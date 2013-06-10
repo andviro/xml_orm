@@ -37,9 +37,16 @@ class _AttrMixin(object):
         if isinstance(self.tag, basestring) and self.tag.startswith('@'):
             self.tag = self.tag[1:]
 
-    def store(self, value, root):
+    def serialize(self, obj, root):
         ns = root.get('xmlns', None)
-        root.set(self.qname(ns), ' '.join(value))
+        value = self.get(obj)
+        if value is None:
+            return
+        elif isinstance(value, list):
+            value = ' '.join(self.to_string(v) for v in value)
+        else:
+            value = self.to_string(value)
+        root.set(self.qname(ns), value)
 
     def consume(self, stack, ns):
         """@todo: Docstring for _load_attrib
@@ -59,9 +66,6 @@ class _AttrMixin(object):
             res = [val]
         return res
 
-    def xml(self, value, ns=None):
-        return self.to_string(value)
-
 
 class _TextMixin(object):
     def __init__(self, *args, **nargs):
@@ -70,11 +74,16 @@ class _TextMixin(object):
             raise DefinitionError("Text field can't have tag name")
         self.is_text = True
 
-    def store(self, value, root):
-        if not len(root):
-            root.text = unicode(' '.join(value))
+    def serialize(self, obj, root):
+        value = self.get(obj)
+        if isinstance(value, list):
+            value = ' '.join(self.to_string(v) for v in value)
         else:
-            root[-1].tail = unicode(' '.join(value))
+            value = self.to_string(value)
+        if not len(root):
+            root.text = unicode(value)
+        else:
+            root[-1].tail = unicode(value)
 
     def consume(self, stack, ns):
         """@todo: Docstring for _load_text
@@ -86,9 +95,6 @@ class _TextMixin(object):
 
         """
         return stack.take_while(lambda x: isinstance(x, basestring), 1)
-
-    def xml(self, value, ns=None):
-        return self.to_string(value)
 
 
 def _mkattr(cls):
@@ -158,9 +164,23 @@ class SimpleField(_SortedEntry, CoreField):
         else:
             self.has_default = False
 
-    def store(self, value, root):
+    def serialize(self, obj, root):
+        value = self.get(obj)
+        if value is None:
+            return
+        elif not isinstance(value, list):
+            value = [value]
+
+        ns = root.get('xmlns', None)
+        if self.qualify:
+            ns = getattr(self.schema._meta,
+                         'namespace', None) if ns is None else ns
+        else:
+            ns = ''
         for val in value:
-            root.append(val)
+            res = etree.Element(self.qname(ns) if ns else self.tag)
+            res.text = self.to_string(val)
+            root.append(res)
 
     def get(self, obj):
         return getattr(obj, self.name, None)
@@ -232,16 +252,6 @@ class SimpleField(_SortedEntry, CoreField):
         return [x.text or "" for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
                                                        self.maxOccurs)]
 
-    def xml(self, value, ns=None):
-        if self.qualify:
-            ns = getattr(self.schema._meta,
-                         'namespace', None) if ns is None else ns
-        else:
-            ns = ''
-        res = etree.Element(self.qname(ns) if ns else self.tag)
-        res.text = self.to_string(value)
-        return res
-
     def check_len(self, obj, exc):
         values = getattr(obj, self.name, None)
         if values is None:
@@ -285,8 +295,14 @@ class RawField(SimpleField):
     def to_python(self, root):
         return root
 
-    def xml(self, value, ns=None):
-        return value
+    def serialize(self, obj, root):
+        value = self.get(obj)
+        if value is None:
+            return
+        elif not isinstance(value, list):
+            value = [value]
+        for val in value:
+            root.append(val)
 
 
 class BooleanField(SimpleField):
@@ -534,13 +550,19 @@ class ComplexField(SimpleField):
         super(ComplexField, self).add_to_cls(cls, name)
         setattr(cls, name.capitalize(), staticmethod(_LazyClass(self._get_cls)))
 
-    def xml(self, val):
-        if not issubclass(self.cls, val.__class__):
-            raise SerializationError('Value for {0} {1} must be of class {2}'
-                                     .format(self.__class__.__name__,
-                                             self.name, self.cls.__name__))
+    def serialize(self, obj, root):
+        value = self.get(obj)
+        if value is None:
+            return
+        elif not isinstance(value, list):
+            value = [value]
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
-        return val.xml(ns=ns)
+        for val in value:
+            if not issubclass(self.cls, val.__class__):
+                raise SerializationError('Value for {0} {1} must be of class {2}'
+                                         .format(self.__class__.__name__,
+                                                 self.name, self.cls.__name__))
+            root.append(val.xml(ns=ns))
 
     def to_python(self, root):
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
@@ -573,9 +595,9 @@ class _UnionMixin(object):
         if len(initializers) > 1:
             raise DefinitionError("Union can't be initialized with more than"
                                   " one value")
-        super(_UnionMixin, self).__init__(*args, **nargs)
         self._field = None
         self._value = None
+        super(_UnionMixin, self).__init__(*args, **nargs)
 
     def __setattr__(self, key, value):
         if key in self._field_index:
@@ -603,3 +625,16 @@ class ChoiceField(ComplexField):
             if not flag:
                 break
         return res
+
+    def serialize(self, obj, root):
+        value = self.get(obj)
+        if value is None:
+            return
+        elif not isinstance(value, list):
+            value = [value]
+        for val in value:
+            tempfld = val._field
+            if not tempfld:
+                continue
+            tempfld.check_len(val, SerializationError)
+            tempfld.serialize(val, root)
