@@ -29,7 +29,13 @@ class _SortedEntry(object):
         _SortedEntry.n += 1
 
 
-class _AttrMixin(object):
+class Object(object):
+    def __new__(cls, *args, **nargs):
+        print("!!!")
+        return super(Object, cls).__new__(cls)
+
+
+class _AttrMixin(Object):
     def __init__(self, *args, **nargs):
         nargs['qualify'] = nargs.pop('qualify', False)
         super(_AttrMixin, self).__init__(*args, **nargs)
@@ -67,7 +73,7 @@ class _AttrMixin(object):
         return res
 
 
-class _TextMixin(object):
+class _TextMixin(Object):
     def __init__(self, *args, **nargs):
         super(_TextMixin, self).__init__(*args, **nargs)
         if self.tag is not None:
@@ -123,13 +129,13 @@ class SimpleField(_SortedEntry, CoreField):
     def __new__(cls, tag=None, *args, **nargs):
         if nargs.pop('is_text', False):
             res = _mktext(cls)
-            return super(res.__class__, res).__new__(res, tag, *args, **nargs)
+            return super(res.__class__, res).__new__(res)
         elif (isinstance(tag, basestring) and tag.startswith('@')
               or nargs.pop('is_attribute', False)):
             res = _mkattr(cls)
-            return super(res.__class__, res).__new__(res, tag, *args, **nargs)
+            return super(res.__class__, res).__new__(res)
         else:
-            res = super(SimpleField, cls).__new__(cls, tag, *args, **nargs)
+            res = super(SimpleField, cls).__new__(cls)
         return res
 
     def __init__(self, tag=None, minOccurs=1, maxOccurs=1,
@@ -597,7 +603,7 @@ class _UnionMixin(object):
             raise DefinitionError("Union can't be initialized with positional"
                                   " arguments")
         initializers = zip(nargs.keys(), self._field_index.keys())
-        if len(initializers) > 1:
+        if len(list(initializers)) > 1:
             raise DefinitionError("Union can't be initialized with more than"
                                   " one value")
         self._field = None

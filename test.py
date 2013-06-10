@@ -102,7 +102,7 @@ def test_all_fields():
     '''
     b = Article.load(test_xml)
     c = Article.load(str(a))
-    print b
+    print(b)
     assert unicode(a) == unicode(b) == unicode(c)
 
 
@@ -177,7 +177,7 @@ def test_interleaved_text():
             pretty_print = True
 
     it = InterleavedText(text1='1', elt1='a', text2='2', elt2='b')
-    print it
+    print(it)
     it2 = InterleavedText.load('<inter>1<elt>a</elt>2<elt>b</elt></inter>')
     assert (unicode(it).strip() == unicode(it2).strip()
             == '<inter>1<elt>a</elt>2<elt>b</elt></inter>')
