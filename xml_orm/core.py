@@ -157,6 +157,18 @@ class _MetaSchema(type):
         _MetaSchema.forwards[new_cls.__name__] = new_cls
         return new_cls
 
+    def reverse(self, level=0):
+        if level:
+            res = ('{0}(\n')
+        else:
+            res = ('class {0}({1}):\n'
+                   .format(self.__name__,
+                           ', '.join(base.__name__ for base in self.__bases__)))
+        level += 1
+        for fld in self._fields:
+            res += ('{0}{1}\n'.format(' ' * 4 * level, fld.reverse(level)))
+        return res
+
 
 class Schema(_MetaSchema("BaseSchema", (object,), {})):
     def __init__(self, *args, **kwargs):
@@ -179,7 +191,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             value = None
             if field.name in kwargs:
                 value = kwargs.pop(field.name)
-            elif field.has_default:
+            elif field.default is not None:
                 value = field.default
             elif field.maxOccurs != 1:
                 value = []

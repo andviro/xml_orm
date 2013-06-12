@@ -139,6 +139,7 @@ class SimpleField(_SortedEntry, CoreField):
                  insert_before=None,
                  insert_after=None,
                  pattern=None,
+                 default=None,
                  **kwargs):
         """@todo: Docstring for __init__
 
@@ -147,6 +148,8 @@ class SimpleField(_SortedEntry, CoreField):
 
         """
         super(SimpleField, self).__init__()
+        self._properties = ['tag', 'minOccurs', 'maxOccurs', 'qualify', 'getter', 'setter',
+                            'insert_before', 'insert_after', 'pattern', 'default']
         self.name = None
         self.tag = tag
         self.pattern = pattern
@@ -160,11 +163,7 @@ class SimpleField(_SortedEntry, CoreField):
         self.maxOccurs = maxOccurs
         self.insert_after = insert_after
         self.insert_before = insert_before
-        if 'default' in kwargs:
-            self.has_default = True
-            self.default = kwargs['default']
-        else:
-            self.has_default = False
+        self.default = default
 
     def serialize(self, obj, root):
         value = self.get(obj)
@@ -231,9 +230,23 @@ class SimpleField(_SortedEntry, CoreField):
         val = self.get(obj)
         return '{0}={1!r}'.format(self.name, val)
 
+    def reverse(self, level):
+        res = '{0} = {1}(\n'.format(self.name, self.__class__.__name__)
+        res += self.reverse_props(level + 1)
+        res += '{0})'.format(' ' * 4 * level)
+        return res
+
+    def reverse_props(self, level):
+        res = ''
+        for prop in self._properties:
+            val = getattr(self, prop, None)
+            if val is not None:
+                res += '{0}{1}={2!r},\n'.format(' ' * level * 4, prop, val)
+        return res
+
     def load(self, stack, ns):
         val = self.consume(stack, ns)
-        if not len(val) and self.has_default and self.minOccurs > 0:
+        if not len(val) and self.default is not None and self.minOccurs > 0:
             val = (self.default
                    if isinstance(self.default, list) else [self.default])
         else:
@@ -337,6 +350,7 @@ class CharField(SimpleField):
             raise DefinitionError('CharField requires max_length')
         self.max_length = max_length
         super(CharField, self).__init__(*args, **kwargs)
+        self._properties.append('max_length')
 
     def to_python(self, value):
         if len(value) > self.max_length:
@@ -378,6 +392,7 @@ class DateTimeField(SimpleField):
         """
         self.format = kwargs.pop('format', u'%Y-%m-%dT%H:%M:%S')
         super(DateTimeField, self).__init__(*args, **kwargs)
+        self._properties.append('format')
 
     def to_python(self, value):
         return datetime.strptime(
@@ -426,6 +441,8 @@ class DecimalField(SimpleField):
         self.decimal_places = decimal_places
 
         super(DecimalField, self).__init__(*args, **kwargs)
+        self._properties.append('decimal_places')
+        self._properties.append('max_digits')
 
     def to_python(self, value):
         try:
@@ -548,6 +565,13 @@ class ComplexField(SimpleField):
         newargs['is_attribute'] = newargs['is_text '] = False
         self._tag = newargs.pop('tag', None)
         super(ComplexField, self).__init__(self._tag, *args, **newargs)
+
+    def reverse_props(self, level):
+        res = ''
+        for fld in self.cls._fields:
+            res += ('{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))
+        res += super(ComplexField, self).reverse_props(level)
+        return res
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls

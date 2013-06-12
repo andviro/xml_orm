@@ -605,3 +605,74 @@ def test_recursive():
     c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
     print(c)
     assert str(c) == '<Some><A><B><A><B/></A></B></A><B><Some><A/></Some></B></Some>'
+
+
+def test_reverse():
+    class B(Schema):
+        a = CharField(max_length=10)
+        b = IntegerField(default=3)
+
+    class A(Schema):
+        f = SimpleField()
+        c = ComplexField(B)
+        d = FloatField('@D', default=0.5)
+        e = ChoiceField(ref='B')
+
+    reverse = A.reverse()
+    print(reverse)
+    assert reverse == '''class A(Schema):
+    f = SimpleField(
+        tag='f',
+        minOccurs=1,
+        maxOccurs=1,
+        qualify=True,
+    )
+    c = ComplexField(
+        a = CharField(
+            tag='a',
+            minOccurs=1,
+            maxOccurs=1,
+            qualify=True,
+            max_length=10,
+        ),
+        b = IntegerField(
+            tag='b',
+            minOccurs=1,
+            maxOccurs=1,
+            qualify=True,
+            default=3,
+        ),
+        tag='B',
+        minOccurs=1,
+        maxOccurs=1,
+        qualify=True,
+    )
+    d = FloatField.A(
+        tag='D',
+        minOccurs=1,
+        maxOccurs=1,
+        qualify=False,
+        default=0.5,
+    )
+    e = ChoiceField(
+        a = CharField(
+            tag='a',
+            minOccurs=1,
+            maxOccurs=1,
+            qualify=True,
+            max_length=10,
+        ),
+        b = IntegerField(
+            tag='b',
+            minOccurs=1,
+            maxOccurs=1,
+            qualify=True,
+            default=3,
+        ),
+        tag='B',
+        minOccurs=1,
+        maxOccurs=1,
+        qualify=True,
+    )
+'''
+    compile(reverse, '<string>', 'exec')
