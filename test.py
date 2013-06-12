@@ -580,10 +580,11 @@ def test_override_tag():
         c = CharField(max_length=10, default='12345')
         d = ComplexField(B, tag='D')
         e = ComplexField(B)
+        f = ComplexField(ref='B', tag='F')
 
-    a = A(d=B(), e=A.E())
+    a = A(d=B(), e=A.E(), f=B())
     print(a)
-    assert str(a) == '<A><c>12345</c><D><a>1</a><b>2.3</b></D><B><a>1</a><b>2.3</b></B></A>'
+    assert str(a) == '<A><c>12345</c><D><a>1</a><b>2.3</b></D><B><a>1</a><b>2.3</b></B><F><a>1</a><b>2.3</b></F></A>'
 
 
 def test_recursive():
