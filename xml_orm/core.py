@@ -157,7 +157,14 @@ class _MetaSchema(type):
         _MetaSchema.forwards[new_cls.__name__] = new_cls
         return new_cls
 
-    def reverse(self, level=0):
+    def _collect_refs(self, seen=set()):
+        res = []
+        for fld in self._fields:
+            if hasattr(fld, 'ref') and fld.ref not in seen:
+                if hasattr(fld.cls):
+                    res.append(fld.cls)
+
+    def reverse(self, level=0, seen=set()):
         if level:
             res = ('{0}(\n')
         else:
@@ -165,8 +172,15 @@ class _MetaSchema(type):
                    .format(self.__name__,
                            ', '.join(base.__name__ for base in self.__bases__)))
         level += 1
+
         for fld in self._fields:
             res += ('{0}{1}\n'.format(' ' * 4 * level, fld.reverse(level)))
+
+        if level == 0:
+            refs = self._collect_refs(seen)
+            seen |= set(ref.__name__ for ref in refs)
+            for ref in refs:
+                res += ref.reverse(seen=seen)
         return res
 
 

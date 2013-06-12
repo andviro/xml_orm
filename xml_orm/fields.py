@@ -568,8 +568,11 @@ class ComplexField(SimpleField):
 
     def reverse_props(self, level):
         res = ''
-        for fld in self.cls._fields:
-            res += ('{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))
+        if self.ref:
+            res += '{0}ref={1!r},\n'.format(' ' * level * 4, self.ref)
+        else:
+            for fld in self.cls._fields:
+                res += ('{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))
         res += super(ComplexField, self).reverse_props(level)
         return res
 

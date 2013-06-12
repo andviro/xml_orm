@@ -605,6 +605,8 @@ def test_recursive():
     c = C(tuda=A(forward=B(backward=A(forward=B()))), suda=B(sideways=C(tuda=A())),)
     print(c)
     assert str(c) == '<Some><A><B><A><B/></A></B></A><B><Some><A/></Some></B></Some>'
+    print(C.reverse())
+    assert 0
 
 
 def test_reverse():
