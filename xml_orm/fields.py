@@ -29,13 +29,7 @@ class _SortedEntry(object):
         _SortedEntry.n += 1
 
 
-class Object(object):
-    def __new__(cls, *args, **nargs):
-        print("!!!")
-        return super(Object, cls).__new__(cls)
-
-
-class _AttrMixin(Object):
+class _AttrMixin(object):
     def __init__(self, *args, **nargs):
         nargs['qualify'] = nargs.pop('qualify', False)
         super(_AttrMixin, self).__init__(*args, **nargs)
@@ -73,7 +67,7 @@ class _AttrMixin(Object):
         return res
 
 
-class _TextMixin(Object):
+class _TextMixin(object):
     def __init__(self, *args, **nargs):
         super(_TextMixin, self).__init__(*args, **nargs)
         if self.tag is not None:
@@ -104,11 +98,11 @@ class _TextMixin(Object):
 
 
 def _mkattr(cls):
-    return type('{0}_Attr'.format(cls.__name__), (_AttrMixin, cls), {})
+    return type('{0}.A'.format(cls.__name__), (_AttrMixin, cls), {})
 
 
 def _mktext(cls):
-    return type('{0}_Text'.format(cls.__name__), (_TextMixin, cls), {})
+    return type('{0}.T'.format(cls.__name__), (_TextMixin, cls), {})
 
 
 class SimpleField(_SortedEntry, CoreField):
@@ -483,19 +477,26 @@ class ComplexField(SimpleField):
             return self._cls
 
         if isinstance(self._cls, basestring):
-            self.tag = self._cls
-            self._cls = None
+            if not self._tag:
+                self.tag = self._cls
+                self._cls = None
+            elif self._tag != self._cls:
+                raise DefinitionError('Tag name "{0}" for field "{1}" contradicts '
+                                      'first parameter "{2}"'
+                                      .format(self._tag, self.name, self._cls))
         elif self._cls is None:
-            self.tag = self.name
+            self.tag = self._tag or self.name
         else:
-            self.tag = getattr(self._cls._meta, 'root', None)
+            self.tag = self._tag or getattr(self._cls._meta, 'root',
+                                            self._cls.__name__)
 
         if self.ref:
             self._cls = _MetaSchema.forwards.get(self.ref)
             if not self._cls:
                 raise DefinitionError('Reference {0} not found for field {1}'
                                       .format(self.ref, self.name))
-            self.tag = getattr(self._cls._meta, 'root', None)
+            self.tag = self._tag or getattr(self._cls._meta, 'root',
+                                            self._cls.__name__)
 
         parent = self._cls or Schema
         self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
@@ -510,6 +511,10 @@ class ComplexField(SimpleField):
 
     def _make_cls(self, *args, **nargs):
         return self.cls(*args, **nargs)
+
+    def __new__(cls, class_=None, *args, **nargs):
+        tag = nargs.pop('tag', class_)
+        return super(ComplexField, cls).__new__(cls, tag, *args, **nargs)
 
     def __init__(self, cls=None, *args, **kwargs):
         """@todo: to be defined
@@ -541,7 +546,8 @@ class ComplexField(SimpleField):
             else:
                 newargs[k] = v
         newargs['is_attribute'] = newargs['is_text '] = False
-        super(ComplexField, self).__init__(None, *args, **newargs)
+        self._tag = newargs.pop('tag', None)
+        super(ComplexField, self).__init__(self._tag, *args, **newargs)
 
     def add_to_cls(self, cls, name):
         """@todo: Docstring for _add_to_cls
@@ -570,10 +576,10 @@ class ComplexField(SimpleField):
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''
         for val in value:
             if not issubclass(self.cls, val.__class__):
-                raise SerializationError('Value for {0} {1} must be of class {2}'
+                raise SerializationError('Value for {0} {1} must be compatible with class {2}'
                                          .format(self.__class__.__name__,
                                                  self.name, self.cls.__name__))
-            root.append(val.xml(ns=ns))
+            root.append(val.xml(ns=ns, tag=self.tag))
 
     def to_python(self, root):
         ns = getattr(self.cls._meta, 'namespace', None) if self.qualify else ''

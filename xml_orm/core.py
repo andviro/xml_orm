@@ -235,9 +235,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
                                   .format(qn, stack._attrs.keys()))
         return new_elt
 
-    def xml(self, ns=None):
+    def xml(self, ns=None, tag=None):
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
-        root = etree.Element(unicode(self._meta.root))
+        root = etree.Element(unicode(tag or self._meta.root))
         if ns is not None:
             root.set('xmlns', ns)
         for field in self._fields:

@@ -447,7 +447,7 @@ def test_pavel():
             root = u'ОргПодт'
 
     operator = Operator()
-    conforg = ConfirmOrganisation(operator=operator)
+    conforg = ConfirmOrganisation(operator)
     print(unicode(conforg))
 
 
@@ -569,6 +569,21 @@ def test_choice():
     b = A.load(sa)
     print(b)
     assert sa == str(b)
+
+
+def test_override_tag():
+    class B(Schema):
+        a = IntegerField(default=1)
+        b = FloatField(default=2.3)
+
+    class A(Schema):
+        c = CharField(max_length=10, default='12345')
+        d = ComplexField(B, tag='D')
+        e = ComplexField(B)
+
+    a = A(d=B(), e=A.E())
+    print(a)
+    assert str(a) == '<A><c>12345</c><D><a>1</a><b>2.3</b></D><B><a>1</a><b>2.3</b></B></A>'
 
 
 def test_recursive():
