@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+
 try:
     from lxml import etree
     _has_schema = True
@@ -12,6 +13,8 @@ from io import BytesIO
 from copy import deepcopy
 import re
 import sys
+
+from .util import _safe_str
 
 _ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
 
@@ -174,9 +177,10 @@ class _MetaSchema(type):
         if level:
             res = ('{0}(\n')
         else:
-            res = ('class {0}({1}):\n'
-                   .format(ref or self.__name__, 'Schema' if ref else
-                           ', '.join(base.__name__ for base in self.__bases__)))
+            res = 'class {0}(Schema):\n'.format(ref or self.__name__)
+            if self.__doc__:
+                res += "{0}u'''{1}'''\n".format(' ' * 4 * (level + 1), self.__doc__)
+
         for fld in self._fields:
             res += ('{0}{1}\n'.format(' ' * 4 * (level + 1),
                                       fld.reverse(level + 1)))
@@ -188,8 +192,8 @@ class _MetaSchema(type):
                 res += '{0}class Meta:\n'.format(' ' * 4 * (level + 1))
                 for meta_attr in mattrs:
                     if not meta_attr.startswith('_'):
-                        res += '{0}{1} = {2!r}\n'.format(' ' * 4 * (level + 2), meta_attr,
-                                                         getattr(meta, meta_attr))
+                        res += '{0}{1} = {2}\n'.format(' ' * 4 * (level + 2), meta_attr,
+                                                       _safe_str(getattr(meta, meta_attr)))
         if level == 0:
             refs = self._collect_refs(seen)
             seen |= set(ref for ref, _ in refs)

@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 # from copy import deepcopy
 from .core import DefinitionError, SerializationError, ValidationError, Schema, CoreField, _MetaSchema
+from .util import _safe_str
 try:
     from lxml import etree
 except ImportError:
@@ -241,7 +242,7 @@ class SimpleField(_SortedEntry, CoreField):
         for prop in self._properties:
             val = getattr(self, prop, None)
             if val is not None:
-                res += '{0}{1}={2!r},\n'.format(' ' * level * 4, prop, val)
+                res += '{0}{1}={2},\n'.format(' ' * level * 4, prop, _safe_str(val))
         return res
 
     def load(self, stack, ns):
@@ -566,7 +567,7 @@ class ComplexField(SimpleField):
     def reverse_props(self, level):
         res = ''
         if self.ref:
-            res += '{0}ref={1!r},\n'.format(' ' * level * 4, self.ref)
+            res += '{0}ref={1},\n'.format(' ' * level * 4, _safe_str(self.ref))
         else:
             for fld in self.cls._fields:
                 res += ('{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))

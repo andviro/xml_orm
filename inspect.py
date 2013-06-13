@@ -27,6 +27,7 @@ def inspect_complex(root, level=0, global_types={}):
                 name = 'field_{0}'.format(fieldnum)
                 fieldnum += 1
                 fields[name] = inspect_element(sub, name, level + 1, global_types)
+                print name, fields
             elif sub.tag == QN(xs, 'sequence'):
                 raise ConversionError('Nested sequences are not supported')
 
@@ -57,14 +58,13 @@ def inspect_element(root, name, level=0, global_types={}):
         return type(name, bases, props)
     else:
         if isinstance(cls, type) and issubclass(cls, Schema):
-            props['cls'] = cls
-            return ComplexField(**props)
+            print cls, name, elt_type
+            return ComplexField(cls, **props)
         elif isinstance(cls, basestring):
             if cls in global_types.values():
                 props['ref'] = cls
                 return ComplexField(**props)
-            else:
-                return SimpleField(**props)
+        return SimpleField(**props)
 
 
 def inspect_xsd(root):
@@ -91,9 +91,8 @@ def inspect_xsd(root):
     return result
 
 if __name__ == '__main__':
-    xsd = etree.parse(u'TR_TRKON_2_700_01_09_02_01.xsd')
+    xsd = etree.parse(u'testcases/DP_PRANNUL_1_985_00_01_01_01.xsd')
     for res in inspect_xsd(xsd.getroot()):
-        s = res.reverse(ref=res.__name__)
+        s = res.reverse()
         compile(s, '<string>', 'exec')
         print s
-

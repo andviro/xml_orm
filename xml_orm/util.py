@@ -5,6 +5,7 @@ from zipfile import ZipFile
 from io import BytesIO
 import sys
 import os
+import re
 
 if sys.version_info >= (3,):
     basestring = str
@@ -14,6 +15,13 @@ else:
     basestring = basestring
     unicode = unicode
     bytes = str
+
+
+def _safe_str(s):
+    if isinstance(s, basestring):
+        return u"u'{0}'".format(s.replace("'", "\\'"))
+    else:
+        return s
 
 
 class Zipped(object):
