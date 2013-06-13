@@ -181,6 +181,13 @@ class _MetaSchema(type):
             res += ('{0}{1}\n'.format(' ' * 4 * (level + 1),
                                       fld.reverse(level + 1)))
 
+        meta = getattr(self, '_meta', None)
+        if meta:
+            res += '{0}class Meta:\n'.format(' ' * 4 * (level + 1))
+            for meta_attr in dir(meta):
+                if not meta_attr.startswith('_'):
+                    res += '{0}{1} = {2!r}\n'.format(' ' * 4 * (level + 2), meta_attr,
+                                                     getattr(meta, meta_attr))
         if level == 0:
             refs = self._collect_refs(seen)
             seen |= set(ref for ref, _ in refs)
