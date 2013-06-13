@@ -160,27 +160,32 @@ class _MetaSchema(type):
     def _collect_refs(self, seen=set()):
         res = []
         for fld in self._fields:
-            if hasattr(fld, 'ref') and fld.ref not in seen:
-                if hasattr(fld.cls):
-                    res.append(fld.cls)
+            if hasattr(fld, 'ref') and fld.ref:
+                if fld.ref not in seen:
+                    res.append((fld.ref, fld.cls))
+                    seen.add(fld.ref)
+                else:
+                    continue
+            if hasattr(fld, 'cls'):
+                res.extend(fld.cls._collect_refs(seen))
+        return res
 
-    def reverse(self, level=0, seen=set()):
+    def reverse(self, level=0, seen=set(), ref=None):
         if level:
             res = ('{0}(\n')
         else:
             res = ('class {0}({1}):\n'
-                   .format(self.__name__,
+                   .format(ref or self.__name__, 'Schema' if ref else
                            ', '.join(base.__name__ for base in self.__bases__)))
-        level += 1
-
         for fld in self._fields:
-            res += ('{0}{1}\n'.format(' ' * 4 * level, fld.reverse(level)))
+            res += ('{0}{1}\n'.format(' ' * 4 * (level + 1),
+                                      fld.reverse(level + 1)))
 
         if level == 0:
             refs = self._collect_refs(seen)
-            seen |= set(ref.__name__ for ref in refs)
-            for ref in refs:
-                res += ref.reverse(seen=seen)
+            seen |= set(ref for ref, _ in refs)
+            for ref, cls in refs:
+                res += cls.reverse(seen=seen, ref=ref)
         return res
 
 

@@ -480,14 +480,10 @@ class _LazyClass(object):
         return getattr(self._real_class, attr)
 
 
-class _Dummy(object):
-    pass
-
-
 class ComplexField(SimpleField):
     """Docstring for ComplexField """
 
-    mixin_class = _Dummy
+    mixin_class = None
 
     def _get_cls(self):
         if self._finalized:
@@ -518,7 +514,8 @@ class ComplexField(SimpleField):
         parent = self._cls or Schema
         self._fields['Meta'] = type('Meta', (object,), {'root': self.tag})
         newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
-        self._cls = type(newname, (self.mixin_class, parent), self._fields)
+        self._cls = type(newname, (self.mixin_class, parent) if
+                         self.mixin_class else (parent, ), self._fields)
         self._fields = []
 
         self._finalized = True
