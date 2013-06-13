@@ -584,7 +584,8 @@ def test_override_tag():
 
     a = A(d=B(), e=A.E(), f=B())
     print(a)
-    assert str(a) == '<A><c>12345</c><D><a>1</a><b>2.3</b></D><B><a>1</a><b>2.3</b></B><F><a>1</a><b>2.3</b></F></A>'
+    assert str(
+        a) == '<A><c>12345</c><D><a>1</a><b>2.3</b></D><B><a>1</a><b>2.3</b></B><F><a>1</a><b>2.3</b></F></A>'
 
 
 def test_recursive():
@@ -620,6 +621,7 @@ def test_reverse():
 
     reverse = A.reverse()
     print(reverse)
+
     assert reverse == '''class A(Schema):
     f = SimpleField(
         tag='f',
@@ -676,5 +678,7 @@ class B(Schema):
         qualify=True,
         default=3,
     )
+    class Meta:
+        root = 'B'
 '''
     compile(reverse, '<string>', 'exec')
