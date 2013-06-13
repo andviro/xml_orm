@@ -68,6 +68,7 @@ def inspect_element(root, name, level=0, global_types={}):
 
 
 def inspect_xsd(root):
+    result = []
     global_types = {}
     clsnum = 1
     for ct in root.findall('xs:complexType', namespaces=nsmap):
@@ -86,8 +87,13 @@ def inspect_xsd(root):
         clsnum += 1
         newcls = inspect_element(elt, name, global_types=global_types)
         if newcls:
-            print newcls.reverse(ref=name)
+            result.append(newcls)
+    return result
 
 if __name__ == '__main__':
     xsd = etree.parse(u'TR_TRKON_2_700_01_09_02_01.xsd')
-    inspect_xsd(xsd.getroot())
+    for res in inspect_xsd(xsd.getroot()):
+        s = res.reverse(ref=res.__name__)
+        compile(s, '<string>', 'exec')
+        print s
+
