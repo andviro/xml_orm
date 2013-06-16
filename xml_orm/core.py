@@ -175,25 +175,26 @@ class _MetaSchema(type):
 
     def reverse(self, level=0, seen=set(), ref=None):
         if level:
-            res = ('{0}(\n')
+            res = (u'{0}(\n')
         else:
-            res = 'class {0}(Schema):\n'.format(ref or self.__name__)
-            if self.__doc__:
-                res += "{0}u'''{1}'''\n".format(' ' * 4 * (level + 1), self.__doc__)
+            res = u'class {0}(Schema):\n'.format(ref or self.__name__)
+            if hasattr(self, '__doc__') and self.__doc__:
+                res += u"{0}u'''{1}'''\n".format(' ' * 4 * (level + 1),
+                                                 unicode(self.__doc__))
 
         for fld in self._fields:
-            res += ('{0}{1}\n'.format(' ' * 4 * (level + 1),
-                                      fld.reverse(level + 1)))
+            res += (u'{0}{1}\n'.format(' ' * 4 * (level + 1),
+                                       fld.reverse(level + 1)))
 
         meta = getattr(self, '_meta', None)
         if meta:
             mattrs = [attr for attr in dir(meta) if not attr.startswith('_')]
             if len(mattrs):
-                res += '{0}class Meta:\n'.format(' ' * 4 * (level + 1))
+                res += u'{0}class Meta:\n'.format(' ' * 4 * (level + 1))
                 for meta_attr in mattrs:
                     if not meta_attr.startswith('_'):
-                        res += '{0}{1} = {2}\n'.format(' ' * 4 * (level + 2), meta_attr,
-                                                       _safe_str(getattr(meta, meta_attr)))
+                        res += u'{0}{1} = {2}\n'.format(' ' * 4 * (level + 2), meta_attr,
+                                                        _safe_str(getattr(meta, meta_attr)))
         if level == 0:
             refs = self._collect_refs(seen)
             seen |= set(ref for ref, _ in refs)

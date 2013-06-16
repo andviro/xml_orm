@@ -141,6 +141,8 @@ class SimpleField(_SortedEntry, CoreField):
                  insert_after=None,
                  pattern=None,
                  default=None,
+                 restrict=None,
+                 doc=None,
                  **kwargs):
         """@todo: Docstring for __init__
 
@@ -150,13 +152,16 @@ class SimpleField(_SortedEntry, CoreField):
         """
         super(SimpleField, self).__init__()
         self._properties = ['tag', 'minOccurs', 'maxOccurs', 'qualify', 'getter', 'setter',
-                            'insert_before', 'insert_after', 'pattern', 'default']
+                            'insert_before', 'insert_after', 'pattern',
+                            'default', 'restrict', 'doc']
         self.name = None
         self.tag = tag
+        self.doc = doc
         self.pattern = pattern
         self.qualify = qualify is None or qualify
         self.getter = getter
         self.setter = setter
+        self.restrict = restrict
         self.minOccurs = minOccurs
         self.storage_type = 'element'
         if maxOccurs == 0:
@@ -208,6 +213,9 @@ class SimpleField(_SortedEntry, CoreField):
         return value
 
     def to_string(self, value):
+        if self.restrict and value not in self.restrict:
+            raise SerializationError('Field {0} does not match restriction'
+                                     .format(self.name))
         res = unicode(value)
         if self.pattern and not re.match(self.pattern, res):
             raise ValueError('Pattern for field "{0}" does not match'
@@ -229,20 +237,20 @@ class SimpleField(_SortedEntry, CoreField):
 
     def repr(self, obj):
         val = self.get(obj)
-        return '{0}={1!r}'.format(self.name, val)
+        return u'{0}={1!r}'.format(self.name, val)
 
     def reverse(self, level):
-        res = '{0} = {1}(\n'.format(self.name, self.__class__.__name__)
+        res = u'{0} = {1}(\n'.format(self.name, self.__class__.__name__)
         res += self.reverse_props(level + 1)
-        res += '{0})'.format(' ' * 4 * level)
+        res += u'{0})'.format(' ' * 4 * level)
         return res
 
     def reverse_props(self, level):
-        res = ''
+        res = u''
         for prop in self._properties:
             val = getattr(self, prop, None)
             if val is not None:
-                res += '{0}{1}={2},\n'.format(' ' * level * 4, prop, _safe_str(val))
+                res += u'{0}{1}={2},\n'.format(' ' * level * 4, prop, _safe_str(val))
         return res
 
     def load(self, stack, ns):
@@ -252,6 +260,9 @@ class SimpleField(_SortedEntry, CoreField):
                    if isinstance(self.default, list) else [self.default])
         else:
             val = [self.to_python(x) for x in val]
+            if self.restrict and not all(x in self.restrict for x in val):
+                raise ValidationError('Field {0} does not match restriction'
+                                      .format(self.name))
 
         return val
 
@@ -346,23 +357,28 @@ class CharField(SimpleField):
         :returns: @todo
 
         """
-        max_length = kwargs.pop('max_length', None)
-        if max_length is None:
+        self.max_length = kwargs.pop('max_length', None)
+        self.min_length = kwargs.pop('min_length', 0)
+        if self.max_length is None:
             raise DefinitionError('CharField requires max_length')
-        self.max_length = max_length
         super(CharField, self).__init__(*args, **kwargs)
         self._properties.append('max_length')
+        self._properties.append('min_length')
 
     def to_python(self, value):
-        if len(value) > self.max_length:
-            raise ValidationError('String too long for CharField "{0}"'
+        l = len(value)
+        if (self.max_length is not None and l > self.max_length
+                or l < self.min_length):
+            raise ValidationError('Invalid string length for CharField "{0}"'
                                   .format(self.name))
         return super(CharField, self).to_python(value)
 
     def to_string(self, value):
         s = super(CharField, self).to_string(value)
-        if len(s) > self.max_length:
-            raise ValueError('String too long for CharField "{0}"'
+        l = len(s)
+        if (self.max_length is not None and l > self.max_length
+                or l < self.min_length):
+            raise ValueError('Invalid string length for CharField "{0}"'
                              .format(self.name))
         return s
 
@@ -431,16 +447,8 @@ class DecimalField(SimpleField):
         :returns: @todo
 
         """
-        max_digits = kwargs.pop('max_digits', None)
-        if max_digits is None:
-            raise DefinitionError('DecimalField requires max_digits')
-        self.max_digits = max_digits
-
-        decimal_places = kwargs.pop('decimal_places', None)
-        if decimal_places is None:
-            raise DefinitionError('DecimalField requires decimal_places')
-        self.decimal_places = decimal_places
-
+        self.max_digits = kwargs.pop('max_digits', 18)
+        self.decimal_places = kwargs.pop('decimal_places', None)
         super(DecimalField, self).__init__(*args, **kwargs)
         self._properties.append('decimal_places')
         self._properties.append('max_digits')
@@ -458,9 +466,9 @@ class DecimalField(SimpleField):
             context = decimal.getcontext().copy()
             context.prec = self.max_digits
             res = unicode(val.quantize(decimal.Decimal(
-                ".1") ** self.decimal_places, context=context))
+                ".1") ** self.decimal_places or 28, context=context))
         else:
-            res = "{0:.{1}f}".format(val, self.decimal_places)
+            res = "{0:.{1}f}".format(val, self.decimal_places or 28)
         return super(DecimalField, self).to_string(res)
 
 
@@ -517,6 +525,10 @@ class ComplexField(SimpleField):
         newname = '{0}.{1}'.format(self.schema.__name__, self.name.capitalize())
         self._cls = type(newname, (self.mixin_class, parent) if
                          self.mixin_class else (parent, ), self._fields)
+        if hasattr(parent, '__doc__'):
+            self._cls.__doc__ = parent.__doc__
+        elif self.doc is not None:
+            self._cls.__doc__ = self.doc
         self._fields = []
 
         self._finalized = True
@@ -565,12 +577,12 @@ class ComplexField(SimpleField):
         super(ComplexField, self).__init__(self._tag, *args, **newargs)
 
     def reverse_props(self, level):
-        res = ''
+        res = u''
         if self.ref:
-            res += '{0}ref={1},\n'.format(' ' * level * 4, _safe_str(self.ref))
+            res += u'{0}ref={1},\n'.format(' ' * level * 4, _safe_str(self.ref))
         else:
             for fld in self.cls._fields:
-                res += ('{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))
+                res += (u'{0}{1},\n'.format(' ' * 4 * level, fld.reverse(level)))
         res += super(ComplexField, self).reverse_props(level)
         return res
 

@@ -5,7 +5,6 @@ from zipfile import ZipFile
 from io import BytesIO
 import sys
 import os
-import re
 
 if sys.version_info >= (3,):
     basestring = str
@@ -19,7 +18,13 @@ else:
 
 def _safe_str(s):
     if isinstance(s, basestring):
-        return u"u'{0}'".format(s.replace("'", "\\'"))
+        if '\n' in s:
+            fmt = u"u'''{0}'''"
+        else:
+            fmt = u"u'{0}'"
+        return fmt.format(unicode(s).replace('\\', '\\\\').replace("'", "\\'"))
+    elif isinstance(s, list):
+        return u'[{0}]'.format(', '.join(_safe_str(x) for x in s))
     else:
         return s
 

@@ -207,18 +207,6 @@ def test_bad_max_length():
         s = CharField()
 
 
-@raises(DefinitionError)
-def test_bad_precision():
-    class BadSchema(Schema):
-        s = DecimalField(max_digits=10)
-
-
-@raises(DefinitionError)
-def test_bad_max_digits():
-    class BadSchema(Schema):
-        s = DecimalField(decimal_places=2)
-
-
 def test_decimal():
     class GoodDecimal(Schema):
         num = DecimalField(is_text=1, max_digits=3, decimal_places=2)
@@ -240,6 +228,23 @@ def test_missing_fields():
 
     badvalue = GoodSchema()
     str(badvalue)
+
+
+def test_restrict():
+    class A(Schema):
+        restricted = IntegerField(restrict=[1, 2, 3])
+
+    s = A(restricted=1)
+    str(s)
+
+
+@raises(SerializationError)
+def test_restrict_bad():
+    class A(Schema):
+        restricted = IntegerField(restrict=[1, 2, 3])
+
+    s = A(restricted=4)
+    str(s)
 
 
 @raises(SerializationError)
@@ -447,8 +452,7 @@ def test_pavel():
             root = u'ОргПодт'
 
     operator = Operator()
-    conforg = ConfirmOrganisation(operator)
-    print(unicode(conforg))
+    print(ConfirmOrganisation(operator))
 
 
 def test_positional():
@@ -610,75 +614,20 @@ def test_recursive():
 
 def test_reverse():
     class B(Schema):
+        u'''
+        документация к классу B
+        '''
         a = CharField(max_length=10)
         b = IntegerField(default=3)
 
     class A(Schema):
+        u'''
+        документация к классу A
+        '''
         f = SimpleField()
         c = ComplexField(B)
         d = FloatField('@D', default=0.5)
         e = ChoiceField(ref='B')
 
     reverse = A.reverse()
-    print(reverse)
-
-    assert reverse == '''class A(Schema):
-    f = SimpleField(
-        tag='f',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=True,
-    )
-    c = ComplexField(
-        a = CharField(
-            tag='a',
-            minOccurs=1,
-            maxOccurs=1,
-            qualify=True,
-            max_length=10,
-        ),
-        b = IntegerField(
-            tag='b',
-            minOccurs=1,
-            maxOccurs=1,
-            qualify=True,
-            default=3,
-        ),
-        tag='B',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=True,
-    )
-    d = FloatField.A(
-        tag='D',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=False,
-        default=0.5,
-    )
-    e = ChoiceField(
-        ref='B',
-        tag='e',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=True,
-    )
-class B(Schema):
-    a = CharField(
-        tag='a',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=True,
-        max_length=10,
-    )
-    b = IntegerField(
-        tag='b',
-        minOccurs=1,
-        maxOccurs=1,
-        qualify=True,
-        default=3,
-    )
-    class Meta:
-        root = 'B'
-'''
     compile(reverse, '<string>', 'exec')
