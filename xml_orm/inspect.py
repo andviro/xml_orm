@@ -11,6 +11,8 @@ else:
     unicode = unicode
     bytes = str
 
+from io import BytesIO
+
 from .core import Schema, XML_ORM_Error
 from .fields import *
 
@@ -62,7 +64,7 @@ def _parse_complex(root, level=0, ctypes={}, stypes={}):
         props = dict(tag=sub.get('name'), cls=SimpleField)
         st = sub.find('xs:simpleType', namespaces=_nsmap)
         elt_type = sub.get('type')
-        if st:
+        if st is not None:
             props.update(_parse_simple(st))
         elif elt_type in stypes:
             props.update(stypes[elt_type])
@@ -92,10 +94,10 @@ def _parse_elt(root, name, level=0, ctypes={}, stypes={}):
     if doc is not None:
         props['doc'] = doc.findtext('xs:documentation', namespaces=_nsmap).strip()
     cls = None
-    if ct:
+    if ct is not None:
         props.update(_parse_complex(ct, level, ctypes, stypes))
         cls = Schema
-    elif st:
+    elif st is not None:
         props.update(_parse_simple(st))
         cls = props.pop('cls')
     elif elt_type in ctypes:

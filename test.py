@@ -3,10 +3,12 @@ from nose.tools import raises
 from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError
 from xml_orm.util import Zipped
 from xml_orm.fields import *
+from xml_orm.inspect import inspect_xsd
 from zipfile import ZipFile
 import sys
 from tempfile import mkstemp
 from datetime import datetime, time
+from glob import iglob
 
 if sys.version_info >= (3,):
     basestring = str
@@ -199,12 +201,6 @@ def test_bad_inheritance():
 def test_bad_max_occurs():
     class BadSchema(Schema):
         s = SimpleField(maxOccurs=0)
-
-
-@raises(DefinitionError)
-def test_bad_max_length():
-    class BadSchema(Schema):
-        s = CharField()
 
 
 def test_decimal():
@@ -631,3 +627,11 @@ def test_reverse():
 
     reverse = A.reverse()
     compile(reverse, '<string>', 'exec')
+
+
+def test_inspect():
+    for f in iglob('testcases/*.xsd'):
+        print(f)
+        res = inspect_xsd(unicode(f))
+        assert len(res)
+        assert all(compile(r.reverse(), '<string>', 'exec') for r in res)

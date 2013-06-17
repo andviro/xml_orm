@@ -359,8 +359,6 @@ class CharField(SimpleField):
         """
         self.max_length = kwargs.pop('max_length', None)
         self.min_length = kwargs.pop('min_length', 0)
-        if self.max_length is None:
-            raise DefinitionError('CharField requires max_length')
         super(CharField, self).__init__(*args, **kwargs)
         self._properties.append('max_length')
         self._properties.append('min_length')

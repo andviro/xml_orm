@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema targetNamespace="http://www.roseu.org/images/stories/roaming/logical-message-v1.xsd"
+		elementFormDefault="qualified"
+		xmlns="http://www.roseu.org/images/stories/roaming/logical-message-v1.xsd"
+		xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+
+	<xs:element name="Сообщение" type="Сообщение" />
+	<xs:element name="Квитанции" type="Квитанции" />
+
+	<!-- Сообщение -->
+
+	<xs:complexType name="Сообщение">
+		<xs:sequence minOccurs="1" maxOccurs="1">
+			<xs:element name="Документ" type="Документ" minOccurs="0" maxOccurs="unbounded"  />
+			<xs:element name="ЭП" type="ЭП" minOccurs="0" maxOccurs="unbounded"  />
+		</xs:sequence>
+		<xs:attribute name="Отправитель" type="ИдУчастЭДО" use="required"/>
+		<xs:attribute name="Получатель" type="ИдУчастЭДО" use="required"/>
+		<xs:attribute name="ДатаОтправки" type="ДатаВремяUTC" use="required"/>
+	</xs:complexType>
+
+
+	<xs:complexType name="Документ">
+		<xs:sequence minOccurs="1" maxOccurs="1">
+			<xs:element name="КДокументу" type="Идентификатор" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="ИдВнутренний" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="ИдСделки" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="Номер" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="Дата" type="xs:date" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="Сумма" type="xs:decimal" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="СуммаНДС" type="xs:decimal" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+		<xs:attribute name="ИдДокумента" type="Идентификатор" use="required"/>
+		<xs:attribute name="ТипДокумента" type="ТипДокумента" use="required"/>
+		<xs:attribute name="ОжидаетсяПодписьПолучателя" type="xs:boolean" use="optional" default="false" />
+		<xs:attribute name="ИмяФайла" type="ИмяФайла" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="ЭП">
+		<xs:attribute name="Подписант" type="ИдУчастЭДО" use="required"/>
+		<xs:attribute name="ИдЭП" type="Идентификатор" use="required"/>
+		<xs:attribute name="КДокументу" type="Идентификатор" use="required"/>
+	</xs:complexType>
+
+
+	<!-- Квитанции -->
+
+
+	<xs:complexType name="Квитанции">
+		<xs:sequence minOccurs="1" maxOccurs="1">
+			<xs:element name="ОшибкаОбработки" type="КвитанцияОшибкаОбработки" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="НеизвестныйИд" type="КвитанцияОшибкаНеизвестныйИд" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="Успех" type="КвитанцияУспех" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="КвитанцияУспех">
+		<xs:annotation>
+			<xs:documentation>
+				Свидетельствует об успешной обработке ЛС с соответствующим идентификатором
+			</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="ИдЛС" type="Идентификатор" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="КвитанцияОшибкаНеизвестныйИд">
+		<xs:annotation>
+			<xs:documentation>
+				Документ или ЭП из обрабатываемого ЛС ссылается на неизвестный системе документ.
+				Эта ошибка может возникать, если ТП с хронологически более поздними документами будет по какой-то причине
+				(например, из-за разового сбоя транспорта) получено и обработано ранее,
+				ТП с хронологически более ранними документами.
+				Необходимо повторить отправку данного ЛС через некоторое время.
+				Если ошибка повторяется постоянно, разобраться в причинах ошибки и устранить их вручную.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence minOccurs="1" maxOccurs="1">
+			<xs:element name="Ид" type="Идентификатор" minOccurs="1" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>
+						Перечень неизвестных системе идентификаторов
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Описание" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		</xs:sequence>
+		<xs:attribute name="ИдЛС" type="Идентификатор" use="required"/>
+	</xs:complexType>
+
+	<xs:complexType name="КвитанцияОшибкаОбработки">
+		<xs:annotation>
+			<xs:documentation>
+				В процессе обработки возникла какая-либо другая ошибка.
+				Необходимо разобраться в причинах ошибки и устранить их вручную.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence minOccurs="1" maxOccurs="1">
+			<xs:element name="Описание" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		</xs:sequence>
+		<xs:attribute name="ИдЛС" type="Идентификатор" use="required"/>
+	</xs:complexType>
+
+
+	<!-- Определения простых типов -->
+
+
+	<xs:simpleType name="ТипДокумента">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Неформализованный" />
+			<xs:enumeration value="ОтказПодписи" />
+			<xs:enumeration value="ТН" />
+			<xs:enumeration value="ТТН" />
+			<xs:enumeration value="Акт" />
+			<xs:enumeration value="АктСверки" />
+			<xs:enumeration value="ПлатПоруч" />
+			<xs:enumeration value="Договор" />
+			<xs:enumeration value="Заказ" />
+			<xs:enumeration value="СФ" />
+			<xs:enumeration value="ИзвещениеОПолучении" />
+			<xs:enumeration value="УведомлениеОбУточнении" />
+			<xs:enumeration value="ПредложениеОбАннулировании" />
+			<xs:enumeration value="СтруктурированныеДанные">
+				<xs:annotation>
+					<xs:documentation>
+						Структурированнае данные (например в формате xml),
+						передаваемые вместе с печатной формой документа.
+						У документа такого типа скорее всего должен быть указан идентификатор КДокументу
+					</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Идентификатор">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[a-z0-9]{32}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="ИдУчастЭДО">
+		<xs:annotation>
+			<xs:documentation>
+				Идентификатор участника документооборота
+				Формат идентификатора: [ИдентификаторОператора>][ИдентификаторАбонента].
+				ИдентификаторАбонента может быть уникален лишь в рамках одного оператора, длина не более 43 символов.
+				ИдентификаторОператора должен быть глобально уникальным, длина 3 символа.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="4"/>
+			<xs:maxLength value="46"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="ИмяФайла">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[^/\\:?*]{1,250}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="ДатаВремяUTC">
+		<xs:restriction base="xs:dateTime">
+			<xs:pattern value=".+T.+Z"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+</xs:schema>
