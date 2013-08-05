@@ -2,8 +2,8 @@
 #-*- coding: utf-8 -*-
 
 from uuid import uuid4
-from xml_orm.schemas.fns import ContainerFNS
-from xml_orm.schemas.auto import autoload
+from schemas.fns import ContainerFNS
+from schemas.auto import autoload
 import os
 import sys
 from zipfile import ZipFile

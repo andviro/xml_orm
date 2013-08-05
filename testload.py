@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from xml_orm.schemas.auto import autoload
+from schemas.auto import autoload
 
 import glob
 import os

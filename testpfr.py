@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from xml_orm.schemas.pfr import ContainerPFR
-from xml_orm.schemas.auto import autoload
+from schemas.pfr import ContainerPFR
+from schemas.auto import autoload
 from uuid import uuid4
 import os
 

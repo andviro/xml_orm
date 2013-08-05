@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from ..core import Schema
-from ..util import Zipped
-from ..fields import *
+from xml_orm.core import Schema
+from xml_orm.util import Zipped
+from xml_orm.fields import *
 from .fns import Sender
 from .util import ContainerUtil
 from uuid import uuid4
