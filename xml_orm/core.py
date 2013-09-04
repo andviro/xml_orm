@@ -290,33 +290,38 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             field.serialize(self, root)
         return root
 
-    def _make_bytes(self):
-        enc = getattr(self._meta, 'encoding', 'utf-8')
+    def _make_bytes(self, force_enc=None):
+        extra_args = {}
+        enc = force_enc or getattr(self._meta, 'encoding', 'utf-8')
         force_xmldecl = getattr(self._meta, 'xml_declaration', False)
-        pretty_print = getattr(self._meta, 'pretty_print', False)
+
+        if _has_lxml:
+            extra_args.update(dict(
+                pretty_print=getattr(self._meta, 'pretty_print', False)
+            ))
+
         if force_xmldecl:
             if _has_lxml:
                 res = etree.tostring(self.xml(),
                                      encoding=enc,
                                      xml_declaration=True,
-                                     pretty_print=pretty_print,)
+                                     **extra_args)
             else:
                 res = (bytes('<?xml version="1.0" encoding="{0}" ?>\n'.format(enc)
                              .encode('ascii'))
-                       + etree.tostring(self.xml(), encoding=enc))
+                       + etree.tostring(self.xml(), encoding=enc, **extra_args))
         else:
-            res = etree.tostring(self.xml(), encoding=enc)
+            res = etree.tostring(self.xml(), encoding=enc, **extra_args)
         return res
 
     def __str__(self):
         if sys.version_info >= (3,):
-            return str(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8',
-                       'replace')
+            return self.__unicode__()
         else:
             return self._make_bytes()
 
     def __unicode__(self):
-        return unicode(etree.tostring(self.xml(), encoding='utf-8'), 'utf-8')
+        return unicode(self._make_bytes('utf-8'), 'utf-8', 'replace')
 
     def __repr__(self):
         fieldrepr = ', '.join(x.repr(self) for x in self._fields if x.has(self))

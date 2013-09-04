@@ -1,6 +1,6 @@
 # coding: utf-8
 from nose.tools import raises
-from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError
+from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError, _has_lxml
 from xml_orm.util import Zipped
 from xml_orm.fields import *
 from xml_orm.inspect import inspect_xsd
@@ -120,7 +120,6 @@ def test_nested():
 
         class Meta:
             root = 'doc'
-            pretty_print = True
 
     d = Doc(author='Ivan Petrov')
     for i in range(1, 2):

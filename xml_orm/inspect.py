@@ -20,7 +20,10 @@ from .fields import *
 class ConversionError(XML_ORM_Error):
     pass
 
-from xml.etree import ElementTree as etree
+try:
+    from lxml import etree
+except ImportError:
+    from xml.etree import ElementTree as etree
 
 xs = "http://www.w3.org/2001/XMLSchema"
 _nsmap = {
