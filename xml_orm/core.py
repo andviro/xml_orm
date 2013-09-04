@@ -59,6 +59,22 @@ def _extract_ns(root):
     return nsobj.group('ns') if nsobj else None
 
 
+def _indent(elem, level=0):
+    i = u"\n" + level * u"  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + u"  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            _indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
+
 def _iterate(root):
     if root.text is not None and root.text.strip():
         yield root.text.strip()
@@ -294,25 +310,23 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         extra_args = {}
         enc = force_enc or getattr(self._meta, 'encoding', 'utf-8')
         force_xmldecl = getattr(self._meta, 'xml_declaration', False)
+        pretty_print = getattr(self._meta, 'pretty_print', False)
 
         if _has_lxml:
             extra_args.update(dict(
-                pretty_print=getattr(self._meta, 'pretty_print', False)
+                pretty_print=pretty_print,
+                xml_declaration=force_xmldecl or enc != 'utf-8',
             ))
+            return etree.tostring(self.xml(), encoding=enc, **extra_args)
+
+        tree = _indent(self.xml()) if pretty_print else self.xml()
+        encoded = etree.tostring(tree, encoding=enc, **extra_args)
 
         if force_xmldecl:
-            if _has_lxml:
-                res = etree.tostring(self.xml(),
-                                     encoding=enc,
-                                     xml_declaration=True,
-                                     **extra_args)
-            else:
-                res = (bytes('<?xml version="1.0" encoding="{0}" ?>\n'.format(enc)
-                             .encode('ascii'))
-                       + etree.tostring(self.xml(), encoding=enc, **extra_args))
+            return ('<?xml version="1.0" encoding="{0}" ?>\n'
+                    .format(enc).encode('ascii') + encoded)
         else:
-            res = etree.tostring(self.xml(), encoding=enc, **extra_args)
-        return res
+            return encoded
 
     def __str__(self):
         if sys.version_info >= (3,):

@@ -5,7 +5,7 @@ from distutils.core import setup
 
 
 setup(name='xml_orm',
-      version='0.6.1',
+      version='0.6.2',
       packages=['xml_orm'],
       scripts=['inspector.py'],
       author='Andrew Rodionoff',
