@@ -4,10 +4,10 @@
 
 try:
     from lxml import etree
-    _has_schema = True
+    _has_lxml = True
 except ImportError:
     from xml.etree import ElementTree as etree
-    _has_schema = False
+    _has_lxml = False
 
 from io import BytesIO
 from copy import deepcopy
@@ -121,7 +121,7 @@ class _MetaSchema(type):
         if new_meta:
             meta_attrs.update(new_meta.__dict__)
 
-        if 'schema' in meta_attrs and _has_schema:
+        if 'schema' in meta_attrs and _has_lxml:
             compiled_xsd = etree.XMLSchema(etree.parse(meta_attrs['schema']))
             meta_attrs['compiled_xsd'] = compiled_xsd
         new_cls._meta = type('Meta', (object,), meta_attrs)
@@ -293,9 +293,13 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
     def _make_bytes(self):
         enc = getattr(self._meta, 'encoding', 'utf-8')
         force_xmldecl = getattr(self._meta, 'xml_declaration', False)
+        pretty_print = getattr(self._meta, 'pretty_print', False)
         if force_xmldecl:
-            if _has_schema:
-                res = etree.tostring(self.xml(), encoding=enc, xml_declaration=True)
+            if _has_lxml:
+                res = etree.tostring(self.xml(),
+                                     encoding=enc,
+                                     xml_declaration=True,
+                                     pretty_print=pretty_print,)
             else:
                 res = (bytes('<?xml version="1.0" encoding="{0}" ?>\n'.format(enc)
                              .encode('ascii'))
