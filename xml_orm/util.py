@@ -45,12 +45,11 @@ class Zipped(object):
     @classmethod
     def load(cls, package):
         has_filename = False
-        if isinstance(package, (basestring, bytes)):
-            try:
-                zf = ZipFile(package)
-                has_filename = True
-            except:
-                zf = ZipFile(BytesIO(package))
+        if isinstance(package, unicode):
+            zf = ZipFile(package)
+            has_filename = True
+        elif isinstance(package, bytes):
+            zf = ZipFile(BytesIO(package))
         elif hasattr(package, 'read'):
             zf = ZipFile(package)
         else:

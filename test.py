@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import unicode_literals, print_function
 from nose.tools import raises
 from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError, _has_lxml
 from xml_orm.util import Zipped
@@ -382,7 +383,10 @@ def test_repr():
     a.b.d = 2
     a.b.e = A.B.E(f="3")
     print(repr(a))
-    assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
+    if sys.version_info >= (3,):
+        assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f='3')))"
+    else:
+        assert repr(a) == "A(a=1, b=A.B(c=1, d=2, e=A.B.E(f=u'3')))"
     b = eval(repr(a), {}, locals())
     print(repr(b))
     print(str(b))
