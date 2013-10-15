@@ -30,11 +30,15 @@ def _safe_str(s):
 
 
 class Zipped(object):
+    '''
+    Загрузка/сохранение XML из архива.
+    Требует наличия в мета-параметрах полей:
+        :entry: Имя файла в архиве, из которого загружается XML
+
+    '''
 
     def __init__(self, *args, **kwargs):
-        """@todo: Docstring for __init__
-        :returns: @todo
-
+        """ Не предназначен для непосредственного вызова.
         """
         self._storage = {}
         self._old_zip = None
@@ -44,6 +48,16 @@ class Zipped(object):
 
     @classmethod
     def load(cls, package):
+        '''
+            Загрузка XML-контейнера из архива.
+
+            :package: Может принимать значения следующих типов:
+                * Строка Unicode -- архив загружается из заданного пути
+                * Байтовая строка -- архив загружается непосредственно из строки
+                * Файло-подобный объект -- архив загружается из объекта через
+                  метод `read()`.
+
+        '''
         has_filename = False
         if isinstance(package, unicode):
             zf = ZipFile(package)
@@ -101,6 +115,8 @@ class Zipped(object):
         '''
         del self._storage[name]
 
+    remove = unlink
+
     def save(self):
         self.package = self.package or getattr(self._meta, 'package', '').format(self=self)
         self.basedir = self.basedir or os.getcwd()
@@ -110,8 +126,7 @@ class Zipped(object):
 
     @property
     def raw_content(self):
-        """@todo: Docstring for raw_content
-        :returns: @todo
+        """Возвращает архив с содержимым в виде байтовой строки.
 
         """
         storage = BytesIO()

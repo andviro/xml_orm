@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function
 
 
 try:
@@ -129,7 +130,7 @@ class _MetaSchema(type):
         if len(parents) > 1:
             raise DefinitionError('Only one parent schema allowed')
         new_sup = super(_MetaSchema, cls).__new__
-        new_cls = new_sup(cls, name, bases, {})
+        new_cls = new_sup(cls, str(name), bases, {})
 
         new_meta = attrs.pop('Meta', None)
         base_meta = parents[0]._meta if len(parents) else None
@@ -140,7 +141,7 @@ class _MetaSchema(type):
         if 'schema' in meta_attrs and _has_lxml:
             compiled_xsd = etree.XMLSchema(etree.parse(meta_attrs['schema']))
             meta_attrs['compiled_xsd'] = compiled_xsd
-        new_cls._meta = type('Meta', (object,), meta_attrs)
+        new_cls._meta = type(str('Meta'), (object,), meta_attrs)
 
         new_cls._fields = []
         if len(parents):
@@ -190,6 +191,9 @@ class _MetaSchema(type):
         return res
 
     def reverse(self, level=0, seen=set(), ref=None):
+        ''' Преобразование экземпляра схемы в строку с кодом.
+
+        '''
         if level:
             res = (u'{0}(\n')
         else:
@@ -221,10 +225,14 @@ class _MetaSchema(type):
 
 class Schema(_MetaSchema("BaseSchema", (object,), {})):
     def __init__(self, *args, **kwargs):
-        """@todo: Docstring for __init__
+        """Инициализация экземпляра XML-документа. Позиционные параметры
+        инициализируют субэлементы в порядке следования в документе.
+        Именованные параметры записываются в поля экземпляра, вне зависимости,
+        заданы они в схеме документа или нет.
 
-        :**kwargs: @todo
-        :returns: @todo
+        :*args: Позиционные параметры для инициализации.
+        :**kwargs: Именованные параметры
+        :returns: Экземпляр документа
 
         """
         if not hasattr(self._meta, 'root'):
@@ -251,10 +259,13 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
 
     @classmethod
     def load(cls, root, active_ns=None):
-        """@todo: Docstring for load
+        """Загрузка документа из файла или байтовой строки.
 
-        :root: @todo
-        :returns: @todo
+        :root: Может быть одним из следующих объектов:
+            * Юникодная строка -- XML загружается из файла с данным именем;
+            * Байтовая строка -- XML загружается непосредственно из строки;
+            * Объект, имеющий метод `read()`.
+        :returns: Экземпляр документа
 
         """
         new_elt = cls()
@@ -297,6 +308,9 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
         return new_elt
 
     def xml(self, ns=None, tag=None):
+        ''' Преобразование экземпляра в `etree.Element`
+
+        '''
         ns = getattr(self._meta, 'namespace', None) if ns is None else ns
         root = etree.Element(unicode(tag or self._meta.root))
         if ns is not None:

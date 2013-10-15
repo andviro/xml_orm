@@ -183,6 +183,18 @@ def _parse_xsd(root):
 
 
 def inspect_xsd(root):
+    ''' Автоматическое преобразование XSD-схемы в класс `Schema`. Возвращает
+        все найденные в схеме глобальные типы данных в виде
+        списка классов.
+
+        :root: Может принимать значения:
+            * Строка Unicode с XSD, либо с именем файла.
+            * Байтовая строка с XSD.
+            * Файло-подобный объект.
+
+        :returns: список классов.
+
+    '''
     if isinstance(root, unicode):
         try:
             root = etree.fromstring(root.encode('utf-8'))

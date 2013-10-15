@@ -107,7 +107,8 @@ def _mktext(cls):
 
 
 class SimpleField(_SortedEntry, CoreField):
-    '''Базовый класс для полей в контейнере
+    '''Базовый класс для полей в контейнере.
+    Хранит строку неограниченной длины.
 
     '''
 
@@ -144,10 +145,24 @@ class SimpleField(_SortedEntry, CoreField):
                  restrict=None,
                  doc=None,
                  **kwargs):
-        """@todo: Docstring for __init__
+        """Инициализация экземпляра поля.
 
-        :tag: @todo
-        :returns: @todo
+        :tag: Тэг элемента или название атрибута.
+            По умолчанию равно имени поля в структуре.
+        :minOccurs: 0 для необязательных элементов
+        :maxOccurs: >1 если элементы образуют последовательность
+        :qualify: Элемент включается в пространство имен контейнера
+        :getter: функция для обертки чтения из поля
+        :setter: функция для обертки записи в поле
+        :insert_before: имя элемента, перед которым поле будет перенесено при
+            наследовании схемы.
+        :insert_after: имя элемента, после которого поле будет перенесено при
+            наследовании схемы.
+        :pattern: ограничение значения поля регулярным выражением
+        :default: значение по умолчанию
+        :restrict: список значений, которые может принимать поле
+        :doc: документация поля
+        :returns: Экземпляр поля
 
         """
         super(SimpleField, self).__init__()
@@ -223,13 +238,6 @@ class SimpleField(_SortedEntry, CoreField):
         return res
 
     def add_to_cls(self, cls, name):
-        """@todo: Docstring for _add_to_cls
-
-        :cls: @todo
-        :name: @todo
-        :returns: @todo
-
-        """
         self.schema = cls
         self.name = name
         self.tag = self.tag or name
@@ -267,14 +275,6 @@ class SimpleField(_SortedEntry, CoreField):
         return val
 
     def consume(self, stack, ns):
-        """@todo: Docstring for _load_element
-
-        :root: @todo
-        :stack: @todo
-        :ns: @todo
-        :returns: @todo
-
-        """
         qn = self.qname(ns)
         return [x.text or "" for x in stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
                                                        self.maxOccurs)]
@@ -296,7 +296,10 @@ class SimpleField(_SortedEntry, CoreField):
 
 
 class RawField(SimpleField):
-    """Docstring for RawField """
+    """Поле, хранящее произвольный XML. Аналог xsd:any. Тип содержимого --
+    `etree.Element`.
+    
+    """
 
     def __init__(self, *args, **kwargs):
         if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
@@ -306,14 +309,6 @@ class RawField(SimpleField):
         super(RawField, self).__init__(*args, **kwargs)
 
     def load(self, stack, ns):
-        """@todo: Docstring for _load_element
-
-        :root: @todo
-        :stack: @todo
-        :ns: @todo
-        :returns: @todo
-
-        """
         qn = self.qname(ns)
         return [x for x in stack.take_while(
             lambda x: hasattr(x, 'tag') and x.tag == qn,
@@ -333,7 +328,7 @@ class RawField(SimpleField):
 
 
 class BooleanField(SimpleField):
-    """Docstring for BooleanField """
+    """ Поле, хранящее булевы значения. """
 
     def to_string(self, value):
         res = unicode(bool(value)).lower()
@@ -349,12 +344,13 @@ class CharField(SimpleField):
 
     '''
     def __init__(self, *args, **kwargs):
-        """@todo: Docstring for __init__
+        """Строковое поле с ограничением макс. и мин. длины. В дополнение ко
+        всем параметрам `SimpleField` поддерживаются следующие:
+        
 
-        :max_length: максимальная длина строки
-        :*args: @todo
-        :**kwargs: @todo
-        :returns: @todo
+        :max_length: максимальная длина строки (обязательный)
+        :min_length: минимальная длина строки (необязательный)
+        :returns: Объект поля
 
         """
         self.max_length = kwargs.pop('max_length', None)
@@ -399,7 +395,8 @@ class DateTimeField(SimpleField):
 
     '''
     def __init__(self, *args, **kwargs):
-        """@todo: Docstring for __init__
+        """Поле для хранения даты/веремени. Поддерживает все параметры
+        `SimpleField`, а также:
 
         :format: формат для чтения/вывода в строку.
             По умолчанию "YYYY-MM-DDTHH:MM:SS"
@@ -436,13 +433,11 @@ class DecimalField(SimpleField):
     '''
 
     def __init__(self, *args, **kwargs):
-        """@todo: Docstring for __init__
+        """Хранит значения типа Decimal. В дополнение к параметрам
+        `SimpleField` поддерживает следующие ограничения:
 
-        :max_digits: число значащих цифр
-        :decimal_places: точность
-        :*args: @todo
-        :**kwargs): @todo
-        :returns: @todo
+        :max_digits: число значащих цифр (по умолчанию 18)
+        :decimal_places: точность (необязательный)
 
         """
         self.max_digits = kwargs.pop('max_digits', 18)
@@ -464,7 +459,7 @@ class DecimalField(SimpleField):
             context = decimal.getcontext().copy()
             context.prec = self.max_digits
             res = unicode(val.quantize(decimal.Decimal(
-                ".1") ** self.decimal_places or 28, context=context))
+                ".1") ** (self.decimal_places or 28), context=context))
         else:
             res = "{0:.{1}f}".format(val, self.decimal_places or 28)
         return super(DecimalField, self).to_string(res)
@@ -488,7 +483,10 @@ class _LazyClass(object):
 
 
 class ComplexField(SimpleField):
-    """Docstring for ComplexField """
+    """Сложное поле позволяет хранить структуру из вложенных элементов и/или
+    атрибутов.
+    
+    """
 
     mixin_class = None
 
@@ -542,12 +540,26 @@ class ComplexField(SimpleField):
         return super(ComplexField, cls).__new__(cls, tag, *args, **nargs)
 
     def __init__(self, cls=None, *args, **kwargs):
-        """@todo: to be defined
+        """Поддерживаются параметры `SimpleField` за исключение `pattern` и
+        `is_attribute`. Также добавляются параметры:
 
-        :name: @todo
-        :cls: @todo
-        :*args: @todo
-        :**kwargs: @todo
+        :cls: Может быть классом схемы, тогда содержимое
+            сложного элемента моделируется по этой схеме. Если первый параметр
+            -- строка, предполагается, что следующие именованные параметры
+            задают поля в декларативном стиле, т.е. `field1=SimpleField()`, ...
+
+        :ref: Строка с именем схемы. Позволяет описывать схемы, рекурсивно
+            ссылающиеся друг на друга. Например:
+
+            class A(Schema):
+                b = ComplexField(ref='B', minOccurs=0)
+
+            class B(Schema):
+                a = ComplexField(ref='A', minOccurs=0)
+
+
+        :**kwargs: необязательное перечисление полей элемента, при задании в
+            декларативном стиле.
 
         """
         if kwargs.get('is_attribute', False) or kwargs.get('is_text', False):
@@ -585,13 +597,6 @@ class ComplexField(SimpleField):
         return res
 
     def add_to_cls(self, cls, name):
-        """@todo: Docstring for _add_to_cls
-
-        :cls: @todo
-        :name: @todo
-        :returns: @todo
-
-        """
         if (self._cls and not isinstance(cls, basestring)
                 and not issubclass(cls, Schema)):
             raise DefinitionError('Initializer for {0} {1} must be derived from Schema class'
@@ -621,14 +626,6 @@ class ComplexField(SimpleField):
         return self.cls.load(root, ns)
 
     def consume(self, stack, ns):
-        """@todo: Docstring for _load_element
-
-        :root: @todo
-        :stack: @todo
-        :ns: @todo
-        :returns: @todo
-
-        """
         qn = self.qname(ns)
         return stack.take_while(lambda x: hasattr(x, 'tag') and x.tag == qn,
                                 self.maxOccurs)
@@ -659,6 +656,10 @@ class _UnionMixin(object):
 
 
 class ChoiceField(ComplexField):
+    ''' Аналог `ComplexField`, но вложенные элементы образуют не
+        последовательность, а объединение, т.е. предоставляют выбор.
+
+    '''
     mixin_class = _UnionMixin
 
     def load(self, stack, ns):
