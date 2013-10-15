@@ -45,14 +45,18 @@ _xsd_to_field_cls = {
 def _parse_complex(root, level=0, ctypes={}, stypes={}):
     fieldnum = 1
     fields = {}
+    is_choice = False
     doc = root.find('xs:annotation', namespaces=_nsmap)
     if doc is not None:
         fields['doc'] = doc.findtext('xs:documentation', namespaces=_nsmap).strip()
     contents = root.find('xs:sequence', namespaces=_nsmap)
+    if contents is None:
+        contents = root.find('xs:choice', namespaces=_nsmap)
+        is_choice = contents is not None
     if contents is not None:
         if (contents.get('minOccurs', "1") != "1" or
                 contents.get('maxOccurs', "1") != "1"):
-            raise ConversionError('Sequences with non-default minOccurs or '
+            raise ConversionError('Sequences/Choices with non-default minOccurs or '
                                   'maxOccurs are not supported')
         for sub in contents:
             if sub.tag == _QN(xs, 'element'):
@@ -60,8 +64,8 @@ def _parse_complex(root, level=0, ctypes={}, stypes={}):
                 fieldnum += 1
                 fields[name] = _parse_elt(sub, name, None, level + 1, ctypes,
                                           stypes)
-            elif sub.tag == _QN(xs, 'sequence'):
-                raise ConversionError('Nested sequences are not supported')
+            elif sub.tag == _QN(xs, 'sequence') or sub.tag == _QN(xs, 'choice'):
+                raise ConversionError('Nested sequences/choices are not supported')
 
     for sub in root.findall('xs:attribute', namespaces=_nsmap):
         props = dict(tag=sub.get('name'), cls=SimpleField)
@@ -79,6 +83,7 @@ def _parse_complex(root, level=0, ctypes={}, stypes={}):
         cls = props.pop('cls')
         fields['field_{0}'.format(fieldnum)] = cls.A(**props)
         fieldnum += 1
+    fields['__is_choice'] = is_choice
     return fields
 
 
