@@ -12,7 +12,7 @@ has_setuptools = False
 
 
 setup_params = dict(name='xml_orm',
-                    version='0.6.6',
+                    version='0.6.7',
                     packages=[str('xml_orm')],
                     author='Andrew Rodionoff',
                     author_email='andviro@gmail.com',
