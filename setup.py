@@ -3,16 +3,16 @@
 from __future__ import unicode_literals, print_function
 import sys
 
-# try:
-    # from setuptools import setup
-    # has_setuptools = True
-# except ImportError:
-from distutils.core import setup
-has_setuptools = False
+try:
+    from setuptools import setup
+    has_setuptools = True
+except ImportError:
+    from distutils.core import setup
+    has_setuptools = False
 
 
 setup_params = dict(name='xml_orm',
-                    version='0.6.7',
+                    version='0.6.8',
                     packages=[str('xml_orm')],
                     author='Andrew Rodionoff',
                     author_email='andviro@gmail.com',
