@@ -1,3 +1,4 @@
 include test.py
 include testcases/amendment-request-v102.xsd
 prune schemas
+include scripts/*
