@@ -58,7 +58,7 @@ def _parse_complex(root, level=0, ctypes={}, stypes={}):
             if sub.tag == _QN(xs, 'element'):
                 name = 'field_{0}'.format(fieldnum)
                 fieldnum += 1
-                fields[name] = _parse_elt(sub, name, level + 1, ctypes,
+                fields[name] = _parse_elt(sub, name, None, level + 1, ctypes,
                                           stypes)
             elif sub.tag == _QN(xs, 'sequence'):
                 raise ConversionError('Nested sequences are not supported')
@@ -82,7 +82,7 @@ def _parse_complex(root, level=0, ctypes={}, stypes={}):
     return fields
 
 
-def _parse_elt(root, name, level=0, ctypes={}, stypes={}):
+def _parse_elt(root, name, target_ns, level=0, ctypes={}, stypes={}):
     ct = root.find('xs:complexType', namespaces=_nsmap)
     st = root.find('xs:simpleType', namespaces=_nsmap)
     elt_type = root.get('type')
@@ -120,8 +120,10 @@ def _parse_elt(root, name, level=0, ctypes={}, stypes={}):
         return ComplexField(**props)
     elif isinstance(cls, type) and issubclass(cls, Schema):
         if level == 0:
-            props['Meta'] = type('Meta', (object,), dict(
-                root=props.pop('tag')))
+            meta_props = dict(root=props.pop('tag'))
+            if target_ns is not None:
+                meta_props['namespace'] = target_ns
+            props['Meta'] = type('Meta', (object,), meta_props)
             doc = props.pop('doc', None)
             res = type(name, (cls, ), props)
             if doc is not None:
@@ -159,6 +161,7 @@ def _parse_xsd(root):
     ctypes = {}
     stypes = {}
     clsnum = 1
+    target_ns = root.get('targetNamespace', None)
     for st in root.findall('xs:simpleType', namespaces=_nsmap):
         name = st.get('name')
         stypes[name] = _parse_simple(st)
@@ -176,7 +179,7 @@ def _parse_xsd(root):
     for elt in root.findall('xs:element', namespaces=_nsmap):
         name = 'Class_{0}'.format(clsnum)
         clsnum += 1
-        newcls = _parse_elt(elt, name, ctypes=ctypes, stypes=stypes)
+        newcls = _parse_elt(elt, name, target_ns, ctypes=ctypes, stypes=stypes)
         if newcls:
             result.append(newcls)
     return result
