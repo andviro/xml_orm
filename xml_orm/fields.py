@@ -437,7 +437,7 @@ class DecimalField(SimpleField):
         `SimpleField` поддерживает следующие ограничения:
 
         :max_digits: число значащих цифр (по умолчанию 18)
-        :decimal_places: точность (необязательный)
+        :decimal_places: точность (по умолчанию 6 знаков после запятой)
 
         """
         self.max_digits = kwargs.pop('max_digits', 18)
@@ -459,7 +459,7 @@ class DecimalField(SimpleField):
             context = decimal.getcontext().copy()
             context.prec = self.max_digits
             res = unicode(val.quantize(decimal.Decimal(
-                ".1") ** (self.decimal_places or 28), context=context))
+                ".1") ** (self.decimal_places or 6), context=context))
         else:
             res = "{0:.{1}f}".format(val, self.decimal_places or 28)
         return super(DecimalField, self).to_string(res)
