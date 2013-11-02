@@ -12,7 +12,7 @@ except ImportError:
 
 
 setup_params = dict(name='xml_orm',
-                    version='0.6.8',
+                    version='0.6.9',
                     packages=[str('xml_orm')],
                     author='Andrew Rodionoff',
                     author_email='andviro@gmail.com',
@@ -24,8 +24,8 @@ if has_setuptools:
     setup_params.update({
         'entry_points': {
             'console_scripts': [
-                'xsdinspect=inspector:main',
-                'xsdinspect-%s.%s=inspector:main' % sys.version_info[:2]
+                'xsdinspect=xml_orm.inspect:main',
+                'xsdinspect-%s.%s=xml_orm.inspect:main' % sys.version_info[:2]
             ],
         },
         'zip_safe': False,
