@@ -5,6 +5,8 @@ from zipfile import ZipFile
 from io import BytesIO
 import sys
 import os
+import json
+from .core import Schema, SerializationError
 
 if sys.version_info >= (3,):
     basestring = str
@@ -138,3 +140,38 @@ class Zipped(object):
                 if n != entry:
                     zf.writestr(n, self._storage[n])
         return storage.getvalue()
+
+
+class JSONSerializable(object):
+    ''' Класс-примесь для сериализации экземпляра объекта в JSON или
+        преобразования в словарь.
+    '''
+    @classmethod
+    def as_dict(cls, object):
+        ''' Получает объект-экземпляр схемы и возвращает словарь.
+
+
+        :object: объект, совместимый с xml_orm.core.Schema
+        :returns: dict()
+
+        '''
+        res = dict()
+        for field in object._fields:
+            field.check_len(object, SerializationError)
+            key, value = field.name, field.get(object)
+            if isinstance(value, Schema):
+                value = cls.as_dict(value)
+            res[key] = value
+        return res
+
+    def json(self):
+        ''' Сериализует объект-экземпляр схемы в JSON. Принимаeтся во внимание
+        мета-параметр `pretty_print`.
+
+        '''
+        indent = 4 if getattr(self._meta, 'pretty_print', None) else None
+        return json.dumps(self,
+                          ensure_ascii=False,
+                          indent=indent,
+                          default=lambda x: self.as_dict(x),
+                          )
