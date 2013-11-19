@@ -2,7 +2,7 @@
 from __future__ import unicode_literals, print_function
 from nose.tools import raises
 from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError, _has_lxml
-from xml_orm.util import Zipped
+from xml_orm.util import Zipped, JSONSerializable
 from xml_orm.fields import *
 from xml_orm.inspect import inspect_xsd
 from zipfile import ZipFile
@@ -638,3 +638,24 @@ def test_inspect():
         res = inspect_xsd(unicode(f))
         assert len(res)
         assert all(compile(r.reverse(), '<string>', 'exec') for r in res)
+
+
+def test_json():
+    class Doc(Schema, JSONSerializable):
+        author = CharField('author', max_length=100)
+        chapter = ComplexField(
+            u'glava',
+            title=SimpleField.A(),
+            p=SimpleField.A(maxOccurs='unbounded'),
+            minOccurs=0,
+            maxOccurs='unbounded',)
+
+        class Meta:
+            root = 'doc'
+
+    d = Doc(author='Ivan Petrov')
+    for i in range(1, 2):
+        d.chapter.append(
+            d.Chapter(title='Chapter {0}'.format(i),
+                      p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
+    assert d.json()

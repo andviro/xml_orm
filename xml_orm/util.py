@@ -6,7 +6,8 @@ from io import BytesIO
 import sys
 import os
 import json
-from .core import Schema, SerializationError
+from collections import OrderedDict as odict
+from .errors import SerializationError
 
 if sys.version_info >= (3,):
     basestring = str
@@ -152,16 +153,21 @@ class JSONSerializable(object):
 
 
         :object: объект, совместимый с xml_orm.core.Schema
-        :returns: dict()
+        :returns: OrderedDict()
 
         '''
-        res = dict()
+        res = odict()
         for field in object._fields:
             field.check_len(object, SerializationError)
             key, value = field.name, field.get(object)
-            if isinstance(value, Schema):
-                value = cls.as_dict(value)
-            res[key] = value
+            if hasattr(field, 'mixin_class'):
+                converter = lambda x: cls.as_dict(x)
+            else:
+                converter = lambda x: x
+            if isinstance(value, (list, tuple)):
+                res[key] = [converter(v) for v in value]
+            else:
+                res[key] = converter(value)
         return res
 
     def json(self):

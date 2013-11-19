@@ -16,6 +16,7 @@ import re
 import sys
 
 from .util import _safe_str
+from .errors import XML_ORM_Error, DefinitionError, ValidationError, SerializationError
 
 _ns_pattern = re.compile(r'{(?P<ns>[^}]+)}.*')
 
@@ -30,22 +31,6 @@ else:
 
 
 class CoreField(object):
-    pass
-
-
-class XML_ORM_Error(Exception):
-    pass
-
-
-class DefinitionError(XML_ORM_Error):
-    pass
-
-
-class ValidationError(XML_ORM_Error):
-    pass
-
-
-class SerializationError(XML_ORM_Error):
     pass
 
 
