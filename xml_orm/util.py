@@ -6,7 +6,10 @@ from io import BytesIO
 import sys
 import os
 import json
-from collections import OrderedDict as odict
+try:
+    from collections import OrderedDict as odict
+except ImportError:
+    odict = dict
 from .errors import SerializationError
 
 if sys.version_info >= (3,):
@@ -153,7 +156,7 @@ class JSONSerializable(object):
 
 
         :object: объект, совместимый с xml_orm.core.Schema
-        :returns: OrderedDict()
+        :returns: OrderedDict() или dict() (Python < 2.7)
 
         '''
         res = odict()
