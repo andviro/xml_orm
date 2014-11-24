@@ -551,6 +551,14 @@ def test_pattern_validation_bad():
 
     A.load('<A field1="adsasdas"/>')
 
+def test_override_ns():
+    class Elt(Schema):
+        ns_attr = SimpleField.A(namespace='http://test.ns')
+        attr = SimpleField.A()
+
+    e = Elt(attr="1", ns_attr="2")
+    e1 = Elt.load('<Elt xmlns:ns0="http://test.ns" ns0:ns_attr="2" attr="1"/>')
+    assert str(e) == str(e1)
 
 def test_choice():
     class FromSchema(Schema):

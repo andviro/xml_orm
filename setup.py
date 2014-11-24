@@ -12,7 +12,7 @@ except ImportError:
 
 
 setup_params = dict(name='xml_orm',
-                    version='0.6.12',
+                    version='0.6.13',
                     packages=[str('xml_orm')],
                     author='Andrew Rodionoff',
                     author_email='andviro@gmail.com',
@@ -29,6 +29,7 @@ if has_setuptools:
             ],
         },
         'zip_safe': False,
+        'setup_requires' : ['nose', 'coverage'],
     })
 else:
     if sys.platform == 'win32':

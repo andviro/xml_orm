@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import decimal
 import sys
 import re
@@ -31,15 +31,16 @@ class _SortedEntry(object):
 
 
 class _AttrMixin(object):
+
     def __init__(self, *args, **nargs):
-        nargs['qualify'] = nargs.pop('qualify', False)
+        self._force_ns = nargs.pop('namespace', None)
+        nargs['qualify'] = nargs.pop('qualify', False) or self._force_ns is not None
         super(_AttrMixin, self).__init__(*args, **nargs)
         self.storage_type = 'attribute'
         if isinstance(self.tag, basestring) and self.tag.startswith('@'):
             self.tag = self.tag[1:]
 
     def serialize(self, obj, root):
-        ns = root.get('xmlns', None)
         value = self.get(obj)
         if value is None:
             return
@@ -47,6 +48,7 @@ class _AttrMixin(object):
             value = ' '.join(self.to_string(v) for v in value)
         else:
             value = self.to_string(value)
+        ns = self._force_ns or root.get('xmlns', None)
         root.set(self.qname(ns), value)
 
     def consume(self, stack, ns):
@@ -58,7 +60,7 @@ class _AttrMixin(object):
         :returns: @todo
 
         """
-        val = stack.get(self.qname(ns), None)
+        val = stack.get(self.qname(self._force_ns or ns), None)
         if val is not None and self.maxOccurs != 1:
             res = val.split()
         elif val is None:
@@ -69,6 +71,7 @@ class _AttrMixin(object):
 
 
 class _TextMixin(object):
+
     def __init__(self, *args, **nargs):
         super(_TextMixin, self).__init__(*args, **nargs)
         if self.tag is not None:
@@ -107,6 +110,7 @@ def _mktext(cls):
 
 
 class SimpleField(_SortedEntry, CoreField):
+
     '''Базовый класс для полей в контейнере.
     Хранит строку неограниченной длины.
 
@@ -296,9 +300,10 @@ class SimpleField(_SortedEntry, CoreField):
 
 
 class RawField(SimpleField):
+
     """Поле, хранящее произвольный XML. Аналог xsd:any. Тип содержимого --
     `etree.Element`.
-    
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -328,6 +333,7 @@ class RawField(SimpleField):
 
 
 class BooleanField(SimpleField):
+
     """ Поле, хранящее булевы значения. """
 
     def to_string(self, value):
@@ -339,14 +345,16 @@ class BooleanField(SimpleField):
 
 
 class CharField(SimpleField):
+
     '''
     Строковое поле с ограничением максимальной длины
 
     '''
+
     def __init__(self, *args, **kwargs):
         """Строковое поле с ограничением макс. и мин. длины. В дополнение ко
         всем параметрам `SimpleField` поддерживаются следующие:
-        
+
 
         :max_length: максимальная длина строки (обязательный)
         :min_length: минимальная длина строки (необязательный)
@@ -378,6 +386,7 @@ class CharField(SimpleField):
 
 
 class FloatField(SimpleField):
+
     '''Принимает любой объект, который можно конвертировать во float.
 
     '''
@@ -390,10 +399,12 @@ class FloatField(SimpleField):
 
 
 class DateTimeField(SimpleField):
+
     '''
     Поле для хранения даты и/или времени
 
     '''
+
     def __init__(self, *args, **kwargs):
         """Поле для хранения даты/веремени. Поддерживает все параметры
         `SimpleField`, а также:
@@ -416,6 +427,7 @@ class DateTimeField(SimpleField):
 
 
 class IntegerField(SimpleField):
+
     '''Принимает любой объект, который можно конвертировать в int.
 
     '''
@@ -428,6 +440,7 @@ class IntegerField(SimpleField):
 
 
 class DecimalField(SimpleField):
+
     '''Хранит значения типа Decimal
 
     '''
@@ -451,8 +464,6 @@ class DecimalField(SimpleField):
             return decimal.Decimal(super(DecimalField, self).to_python(value))
         except decimal.InvalidOperation as e:
             raise ValidationError(e)
-        except:
-            raise
 
     def to_string(self, val):
         if isinstance(val, decimal.Decimal):
@@ -483,9 +494,10 @@ class _LazyClass(object):
 
 
 class ComplexField(SimpleField):
+
     """Сложное поле позволяет хранить структуру из вложенных элементов и/или
     атрибутов.
-    
+
     """
 
     mixin_class = None
@@ -636,6 +648,7 @@ class ComplexField(SimpleField):
 
 
 class _UnionMixin(object):
+
     def __init__(self, *args, **nargs):
         if len(args):
             raise DefinitionError("Union can't be initialized with positional"
@@ -656,6 +669,7 @@ class _UnionMixin(object):
 
 
 class ChoiceField(ComplexField):
+
     ''' Аналог `ComplexField`, но вложенные элементы образуют не
         последовательность, а объединение, т.е. предоставляют выбор.
 
