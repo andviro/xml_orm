@@ -1,9 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals, print_function
 from nose.tools import raises
-from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError, _has_lxml
+from xml_orm.core import Schema, DefinitionError, ValidationError, SerializationError, _has_lxml  # noqa
 from xml_orm.util import Zipped, JSONSerializable
-from xml_orm.fields import *
+from xml_orm.fields import *  # noqa
 from xml_orm.inspect import inspect_xsd
 from zipfile import ZipFile
 import sys
@@ -30,7 +30,7 @@ class Document(Schema):
     class Meta:
         root = u'Документ'
         namespace = 'http://www.example.com/ns2'
-        encoding = 'cp1251'
+        encoding = 'windows-1251'
 
 
 class Author(Schema):
@@ -517,6 +517,7 @@ def test_pattern_bad2():
 
 def test_namespace_inherit():
     class Container(Schema):
+
         class Meta:
             namespace = 'some_ns'
 
@@ -551,6 +552,7 @@ def test_pattern_validation_bad():
 
     A.load('<A field1="adsasdas"/>')
 
+
 def test_override_ns():
     class Elt(Schema):
         ns_attr = SimpleField.A(namespace='http://test.ns')
@@ -559,6 +561,7 @@ def test_override_ns():
     e = Elt(attr="1", ns_attr="2")
     e1 = Elt.load('<Elt xmlns:ns0="http://test.ns" ns0:ns_attr="2" attr="1"/>')
     assert str(e) == str(e1)
+
 
 def test_choice():
     class FromSchema(Schema):
@@ -621,6 +624,7 @@ def test_recursive():
 
 def test_reverse():
     class B(Schema):
+
         u'''
         документация к классу B
         '''
@@ -628,6 +632,7 @@ def test_reverse():
         b = IntegerField(default=3)
 
     class A(Schema):
+
         u'''
         документация к классу A
         '''
@@ -667,3 +672,16 @@ def test_json():
             d.Chapter(title='Chapter {0}'.format(i),
                       p=['Paragraph {0}.{1}'.format(i, j) for j in range(1, 4)]))
     assert d.json()
+
+
+def test_encoding():
+    class Encoded(Schema):
+        some_str = SimpleField()
+
+        class Meta:
+            encoding = 'windows-1251'
+
+    data = Encoded('Национальные символы')
+    str1 = "<?xml version='1.0' encoding='windows-1251'?>\n{0}".format(str(data))
+    str2 = bytes(data).decode('windows-1251')
+    assert str1 == str2
