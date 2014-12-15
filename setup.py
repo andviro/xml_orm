@@ -12,7 +12,7 @@ except ImportError:
 
 
 setup_params = dict(name='xml_orm',
-                    version='0.6.13',
+                    version='0.6.14',
                     packages=[str('xml_orm')],
                     author='Andrew Rodionoff',
                     author_email='andviro@gmail.com',
