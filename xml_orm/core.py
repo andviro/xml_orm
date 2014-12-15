@@ -305,10 +305,10 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             field.serialize(self, root)
         return root
 
-    def _make_bytes(self, force_enc=None):
+    def _make_bytes(self, force_enc=None, disable_xmldecl=False):
         extra_args = {}
         enc = force_enc or getattr(self._meta, 'encoding', 'utf-8')
-        force_xmldecl = getattr(self._meta, 'xml_declaration', False)
+        force_xmldecl = getattr(self._meta, 'xml_declaration', False) and not disable_xmldecl
         pretty_print = getattr(self._meta, 'pretty_print', False)
 
         if _has_lxml:
@@ -334,7 +334,7 @@ class Schema(_MetaSchema("BaseSchema", (object,), {})):
             return self._make_bytes()
 
     def __unicode__(self):
-        return unicode(self._make_bytes('utf-8'), 'utf-8', 'replace')
+        return unicode(self._make_bytes('utf-8', disable_xmldecl=True), 'utf-8', 'replace')
 
     def __repr__(self):
         fieldrepr = ', '.join(x.repr(self) for x in self._fields if x.has(self))

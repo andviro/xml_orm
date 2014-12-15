@@ -680,6 +680,7 @@ def test_encoding():
 
         class Meta:
             encoding = 'windows-1251'
+            xml_declaration = True
 
     data = Encoded('Национальные символы')
     str1 = "<?xml version='1.0' encoding='windows-1251'?>\n{0}".format(str(data))
