@@ -1,23 +1,16 @@
-# Универсальный ORM для XML-контейнеров
+# XML ORM -- XML document to Python object mapping
 
-Пакет позволяет структурно проектировать схемы XML-документов, аналогично
-моделям таблиц БД фреймворка [Django.](https://docs.djangoproject.com/en/dev/topics/db/models/) Объектно-ориентированный подход
-позволяет повторно использовать элементы схем путем наследования и
-переопределения полей XML-элементов. При задании класса-схемы автоматически
-генерируется код для загрузки и сохранения XML-документов, удовлетворяющих
-схеме. Также в составе пакета имеется класс-примесь, помещающий XML-контейнер
-внутрь архива Zip.
-
-## Установка пакета
-
-Установка производится запуском командной строки:
-
-    python setup.py install
-
-Рекомендуется предварительно создать и активировать виртуальное окружение с
-помощью пакета `virtualenv`.
-
-## Документация
-
-Документация поддерживается в [wiki проекта](https://bitbucket.org/andviro/xml_orm/wiki)
-
+This library is inspired by Django object to relation
+[layer](https://docs.djangoproject.com/en/dev/topics/db/models/). XML document 
+schemas are represented by Python classes with fields corresponding to nested 
+elements and attributes. Document namespaces and encodings are stored as class 
+Meta information. Object instances are transparently loaded from XML documents, 
+with validation on load and save operations. Object-oriented approach allows 
+reusing of schema elements by inheritance and overriding of XML elements and 
+attributes represented by Python class members. XML namespaces, serialization 
+an de-serialization to different encodings and optional schema validation are 
+supported, along with most common XSD types to Python objects mapping. XSD 
+inspection utility is provided for conversion of existing XSD schemas to Python 
+objects (very much work in progress, but usable for simple schemas). 
+Documentation is work in progress, mostly in Russian. For reference see source 
+of `test.py` which showcases all current features.
